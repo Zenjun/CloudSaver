@@ -1,0 +1,52 @@
+{
+  "observed_at": "2026-01-01T00:00:00Z",
+  "resources": [
+    {
+      "resource_id": "i-demo-dev",
+      "type": "ec2_instance",
+      "region": "ap-northeast-2",
+      "tags": {"environment": "dev"},
+      "state": "running",
+      "cpu_average": 2.1,
+      "cpu_samples": 14,
+      "period_start": "2025-12-18T00:00:00Z",
+      "period_end": "2026-01-01T00:00:00Z"
+    },
+    {
+      "resource_id": "i-demo-prod",
+      "type": "ec2_instance",
+      "region": "ap-northeast-2",
+      "tags": {"environment": "prod", "protected": "true"},
+      "state": "running",
+      "cpu_average": 1.2,
+      "cpu_samples": 14,
+      "period_start": "2025-12-18T00:00:00Z",
+      "period_end": "2026-01-01T00:00:00Z"
+    },
+    {
+      "resource_id": "vol-demo-unattached",
+      "type": "ebs_volume",
+      "region": "ap-northeast-2",
+      "tags": {},
+      "state": "available"
+    },
+    {
+      "resource_id": "eipalloc-demo-unused",
+      "type": "elastic_ip",
+      "region": "ap-northeast-2",
+      "tags": {},
+      "state": "unassociated"
+    },
+    {
+      "resource_id": "i-demo-no-metrics",
+      "type": "ec2_instance",
+      "region": "ap-northeast-2",
+      "tags": {},
+      "state": "running",
+      "cpu_average": null,
+      "cpu_samples": 0,
+      "period_start": "2025-12-18T00:00:00Z",
+      "period_end": "2026-01-01T00:00:00Z"
+    }
+  ]
+}
