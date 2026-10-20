@@ -1,6 +1,6 @@
 # CloudSaver
 
-AWS 비용 절감 후보의 근거, 예상 절감액과 운영 위험을 함께 설명하는 셀프 호스팅 CLI입니다. **현재 Phase 1–5의 데모, AWS 읽기 전용 수집, 후보 탐지, 로컬 비용 시나리오·위험 설명, Cloud Custodian 정책 검증·평가 어댑터가 구현되었습니다.** 실제 AWS 가격·청구 조회는 아직 없습니다.
+AWS 비용 절감 후보의 근거, 예상 절감액과 운영 위험을 함께 설명하는 셀프 호스팅 CLI입니다. **현재 Phase 1–5의 데모, AWS 읽기 전용 수집, 후보 탐지, 로컬 비용 시나리오·위험 설명, Cloud Custodian 정책 검증·평가 어댑터와 Phase 7의 읽기 전용 HTML 대시보드가 구현되었습니다.** 실제 AWS 가격·청구 조회는 아직 없습니다.
 
 - [제품 요구사항과 원본 계획](agent.md)
 - [아키텍처와 결정 기록](docs/architecture.md)
@@ -12,6 +12,7 @@ AWS 비용 절감 후보의 근거, 예상 절감액과 운영 위험을 함께 
 - [Cloud Custodian 정책 연동](docs/custodian.md)
 - [설치 및 Docker 실행](docs/installation.md)
 - [공개 배포 준비](docs/release-readiness.md)
+- [읽기 전용 대시보드](docs/dashboard.md)
 
 ## 로컬 설치와 5분 데모
 
@@ -73,6 +74,17 @@ docker run --rm --network none --read-only cloudsaver:local demo scan
 ```
 
 x86-64에서는 `linux/amd64`를 지정합니다. 실제 계정 조회용 자격 증명 마운트와 패키지/휠 설치 절차는 [설치 문서](docs/installation.md)에 있습니다. CI는 Python 3.11–3.13과 Linux amd64/arm64 및 macOS를 검사하도록 구성했습니다. 아직 원격 CI 결과나 실제 AWS 계정 동작을 확인한 것은 아닙니다.
+
+## 읽기 전용 대시보드 (Phase 7)
+
+저장된 보고서를 브라우저에서 볼 HTML 파일로 만들 수 있습니다. 별도 웹 서버나 JavaScript가 필요하지 않습니다.
+
+```bash
+.venv/bin/cloudsaver demo scan --format json --output demo-report.json
+.venv/bin/cloudsaver dashboard --input demo-report.json --output dashboard.html
+```
+
+`dashboard.html`을 로컬 브라우저로 열면 탐지 후보, 위험 근거, 비용 가정, 수집 실패 범위를 볼 수 있습니다. `--cost-input costs.json`을 추가하면 Phase 4의 조건부 비용 시나리오를 같은 계산 엔진으로 적용합니다. 출력 파일은 새로 생성하며 권한은 `0600`입니다. 보고서에 민감한 데이터가 들어갈 수 있으므로 생성된 파일을 공개 웹 서버에 올리지 마세요. 자세한 범위는 [대시보드 문서](docs/dashboard.md)에 있습니다.
 
 ## 개발 검증
 

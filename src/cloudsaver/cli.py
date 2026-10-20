@@ -65,6 +65,12 @@ def _parser() -> argparse.ArgumentParser:
         saved_parser.add_argument(
             "--output", type=Path, metavar="PATH", help="write output to a new file"
         )
+    dashboard_parser = commands.add_parser(
+        "dashboard", help="Create a read-only HTML dashboard from a saved report"
+    )
+    dashboard_parser.add_argument("--input", required=True, type=Path, metavar="REPORT.json")
+    dashboard_parser.add_argument("--cost-input", type=Path, metavar="COSTS.json")
+    dashboard_parser.add_argument("--output", required=True, type=Path, metavar="DASHBOARD.html")
     return parser
 
 
@@ -80,6 +86,29 @@ def _write_new_file(path: Path, content: str) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.command == "dashboard":
+        from cloudsaver.costs import apply_scenarios
+        from cloudsaver.dashboard import render_dashboard
+        from cloudsaver.stored import read_report
+
+        try:
+            saved = read_report(args.input)
+            if args.cost_input is not None:
+                raw_costs = json.loads(args.cost_input.read_text(encoding="utf-8"))
+                if not isinstance(raw_costs, dict):
+                    raise ValueError("invalid cost input")
+                saved = apply_scenarios(saved, raw_costs)
+            _write_new_file(args.output, render_dashboard(saved))
+        except (ValueError, UnicodeError, json.JSONDecodeError):
+            print("Invalid report or cost input.", file=sys.stderr)
+            return 2
+        except FileExistsError:
+            print("Output file already exists; choose a new path.", file=sys.stderr)
+            return 2
+        except OSError:
+            print("Could not read input or write dashboard file.", file=sys.stderr)
+            return 2
+        return 0
     if args.command == "custodian":
         from cloudsaver.custodian import CustodianFailure, CustodianUnavailable, run
 

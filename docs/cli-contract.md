@@ -1,6 +1,6 @@
 # CLI 및 보고서 계약 — Phase 0 초안
 
-Phase 1의 `--help`와 `demo scan`, Phase 2–3의 `scan` 수집 및 후보 탐지, Phase 4의 저장된 보고서 명령, Phase 5의 Custodian 검증·평가가 구현되었다.
+Phase 1의 `--help`와 `demo scan`, Phase 2–3의 `scan` 수집 및 후보 탐지, Phase 4의 저장된 보고서 명령, Phase 5의 Custodian 검증·평가, Phase 7의 HTML 대시보드가 구현되었다.
 
 | 단계 | 명령 | 의미 |
 |---|---|---|
@@ -12,6 +12,7 @@ Phase 1의 `--help`와 `demo scan`, Phase 2–3의 `scan` 수집 및 후보 탐�
 | Phase 4 | `cloudsaver report --input REPORT.json [--cost-input COSTS.json] [--format table|json]` | 수집 문제와 후보를 포함한 전체 보고서 |
 | Phase 5 | `cloudsaver custodian validate --policy POLICY.yml [--format table|json] [--output PATH]` | 안전한 정책 부분집합과 Custodian 스키마 검증. AWS 호출 없음 |
 | Phase 5 | `cloudsaver custodian evaluate --policy POLICY.yml --region REGION --assume-role ROLE_ARN [--profile NAME] [--format table|json] [--output PATH]` | 역할 전환과 읽기 전용 세션 정책으로 비파괴적 평가 |
+| Phase 7 | `cloudsaver dashboard --input REPORT.json --output DASHBOARD.html [--cost-input COSTS.json]` | 검증된 저장 보고서를 읽기 전용 HTML로 생성. AWS 호출 없음 |
 
 `--output`은 명시된 파일에만 쓰며 기존 파일 덮어쓰기는 기본 거부한다. 표와 JSON은 표준 출력, 진단 메시지는 표준 오류로 보낸다. JSON 모드에서 표준 출력은 단일 유효 JSON 문서만 포함한다. 데모 결과에는 표 제목과 JSON `data_kind: "DEMO"` 및 `notice: "DEMO DATA"`를 표시한다. 도움말도 실제 지원하는 명령만 보여준다.
 

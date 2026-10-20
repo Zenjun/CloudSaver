@@ -43,6 +43,8 @@ jobs:
           /tmp/cloudsaver-smoke/bin/python -m pip install dist/*.whl
           /tmp/cloudsaver-smoke/bin/cloudsaver demo scan --format json > /tmp/cloudsaver-demo.json
           /tmp/cloudsaver-smoke/bin/python -c 'import json; d=json.load(open("/tmp/cloudsaver-demo.json")); assert d["data_kind"] == "DEMO"'
+          /tmp/cloudsaver-smoke/bin/cloudsaver dashboard --input /tmp/cloudsaver-demo.json --output /tmp/cloudsaver-dashboard.html
+          test -s /tmp/cloudsaver-dashboard.html
 
   docker:
     strategy:
