@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from cloudsaver import demo, report
+from cloudsaver.policies import evaluate_all
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -85,10 +86,11 @@ def main(argv: list[str] | None = None) -> int:
             regions = validate_regions(args.regions.split(","))
             session = new_session(args.profile, regions)
             inventory = collect(session, regions, datetime.now(UTC))
+            findings = evaluate_all(inventory.resources, provider="aws")
             content = (
-                report.render_inventory_json(inventory)
+                report.render_inventory_json(inventory, findings)
                 if args.format == "json"
-                else report.render_inventory_table(inventory)
+                else report.render_inventory_table(inventory, findings)
             )
             if args.output is None:
                 sys.stdout.write(content)

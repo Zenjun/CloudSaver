@@ -1,6 +1,6 @@
 # 아키텍처 — Phase 0 설계안
 
-상태: Phase 0 설계안. Phase 1 데모 CLI와 Phase 2 AWS 읽기 전용 수집기가 구현되었고, 후속 단계의 구조는 제안이다. 상위 요구사항은 [`agent.md`](../agent.md)에 있다.
+상태: Phase 0 설계안. Phase 1–3 데모 CLI, AWS 읽기 전용 수집기, 공유 탐지 정책이 구현되었고, 후속 단계의 구조는 제안이다. 상위 요구사항은 [`agent.md`](../agent.md)에 있다.
 
 ## 결정 기록
 
@@ -27,19 +27,19 @@ CLI 인수/출력
 표 / JSON 렌더러, 명시적 파일 저장
 ```
 
-현재 코드는 `src/cloudsaver/{cli.py,domain.py,demo.py,report.py,providers/aws.py}`와 `tests/`에 있다. `policies`·`analysis`는 Phase 3–4에서, `storage`는 파일 기반 보고서 요구가 구체화될 때 추가한다. 의존 방향은 `cli`와 `providers/aws`에서 `domain`을 향하고, 도메인 코드는 외부 라이브러리의 응답 객체를 받아들이지 않는다. AWS SDK는 `scan` 명령에서만 불러온다.
+현재 코드는 `src/cloudsaver/{cli.py,domain.py,demo.py,policies.py,report.py,providers/aws.py}`와 `tests/`에 있다. 비용·상세 위험 분석은 Phase 4에서, `storage`는 파일 기반 보고서 요구가 구체화될 때 추가한다. 의존 방향은 `cli`와 `providers/aws`에서 `domain`을 향하고, 도메인 코드는 외부 라이브러리의 응답 객체를 받아들이지 않는다. AWS SDK는 `scan` 명령에서만 불러온다.
 
 ## 데이터 모델 초안
 
 - `ResourceSnapshot`: 공급자, 계정 참조(출력 시 마스킹), 리전, 리소스 ID, 유형, 허용된 태그, 수집 시각, 수집 완전성.
-- `Evidence`: 출처, 메트릭/관찰명, 시작·끝 시각, 값 또는 결측, 단위, 품질(`COMPLETE`, `PARTIAL`, `MISSING`, `ERROR`). 결측과 0을 구별한다.
+- `Evidence`: 출처, 메트릭/관찰명, 시작·끝 시각, 값 또는 결측, 단위, 품질(`COMPLETE`, `MISSING`, `ERROR`). 결측과 0을 구별한다.
 - `CollectionIssue`: 서비스·리전·작업, 범주, 재시도 가능 여부, 공개 가능한 메시지. 실패한 범위는 발견 0건으로 기록하지 않는다.
 - `Finding`: 결정적 ID, 정책 ID·버전, 리소스 참조, 탐지 시각, 상태(`CANDIDATE`, `INSUFFICIENT_DATA`, `EXCLUDED`), 근거와 관찰 범위.
 - `RiskAssessment`: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`, `UNKNOWN`, 이유, 알 수 없는 요소, 평가 시각. 위험도는 데이터의 충분성과 별개다.
 - `SavingsEstimate`: 통화·기간, 기준 비용·변경 후 비용·절감 가능액(각각 숫자 또는 `UNKNOWN`), 산식, 출처, 가정, 제외 비용, 신뢰도. 숫자는 입력 가격과 사용량 및 적용 범위가 검증된 경우에만 기록한다.
 - `Report`: 스키마 버전, 데이터 종류(`DEMO`/`AWS`), 스캔 시각, 요청/완료/실패 범위, 후보, 수집 문제, 전체 상태.
 
-`Finding` ID는 정책 버전과 리소스 참조를 정규화한 값에서 만든다. 시각이나 출력 순서가 바뀌어도 같은 후보를 식별할 수 있어야 한다. 보고서 직렬화에서 태그 값, 전체 계정 ID, 공개 IP 주소 등은 기본적으로 숨긴다. 내부 식별과 외부 표시를 분리한다.
+`Finding` ID는 공급자, 정책 ID, 리전, 리소스 참조를 조합한다. 시각이나 출력 순서가 바뀌어도 같은 후보를 식별할 수 있어야 한다. 보고서 직렬화에서 태그 값, 전체 계정 ID, 공개 IP 주소 등은 기본적으로 숨긴다. 내부 식별과 외부 표시를 분리한다.
 
 ## 탐지 및 위험의 최소 규칙
 
@@ -52,4 +52,4 @@ CLI 인수/출력
 
 ## 보류한 설계
 
-API/웹 UI, 데이터베이스, 승인/실행 엔진은 범위 밖이다. 정책 임계값과 최소 관찰 일수는 데모 fixture 및 오탐 시험을 바탕으로 Phase 3에 고정한다. AWS 계정 전체 검색 범위와 멀티 계정 방식도 실제 권한 설계 후 결정한다.
+API/웹 UI, 데이터베이스, 승인/실행 엔진은 범위 밖이다. Phase 3의 정책 임계값과 근거·제약은 [탐지 정책](policies.md)에 기록한다. AWS 계정 전체 검색 범위와 멀티 계정 방식도 실제 권한 설계 후 결정한다.

@@ -1,9 +1,10 @@
 """Small validated models shared by demo analysis and later collectors."""
 
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 ResourceType = Literal["ec2_instance", "ebs_volume", "elastic_ip"]
+MetricsStatus = Literal["COMPLETE", "MISSING", "ERROR", "NOT_REQUESTED"]
 
 
 @dataclass(frozen=True)
@@ -19,7 +20,7 @@ class ResourceSnapshot:
     period_end: str | None = None
     account_ref: str | None = None
     observed_at: str | None = None
-    metrics_status: Literal["COMPLETE", "MISSING", "ERROR", "NOT_REQUESTED"] = "NOT_REQUESTED"
+    metrics_status: MetricsStatus = "NOT_REQUESTED"
 
     @classmethod
     def from_mapping(cls, raw: dict[str, Any]) -> "ResourceSnapshot":
@@ -57,6 +58,9 @@ class ResourceSnapshot:
             end is not None and not isinstance(end, str)
         ):
             raise ValueError("invalid observation period")
+        metrics_status = raw.get("metrics_status", "NOT_REQUESTED")
+        if metrics_status not in ("COMPLETE", "MISSING", "ERROR", "NOT_REQUESTED"):
+            raise ValueError("invalid metrics status")
         return cls(
             resource_id=resource_id,
             type=kind,
@@ -67,6 +71,7 @@ class ResourceSnapshot:
             cpu_samples=samples,
             period_start=start,
             period_end=end,
+            metrics_status=cast(MetricsStatus, metrics_status),
         )
 
 
@@ -76,7 +81,7 @@ class Evidence:
     metric: str
     value: float | str | None
     unit: str | None
-    quality: Literal["COMPLETE", "MISSING"]
+    quality: Literal["COMPLETE", "MISSING", "ERROR"]
     period_start: str | None = None
     period_end: str | None = None
 

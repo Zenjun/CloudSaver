@@ -1,4 +1,4 @@
-"""Stable, redacted demo report rendering."""
+"""Stable, redacted demo and AWS report rendering."""
 
 import json
 from dataclasses import asdict
@@ -9,6 +9,22 @@ from cloudsaver.domain import Finding
 SCHEMA_VERSION = "1.0.0"
 
 
+def _findings(findings: list[Finding]) -> list[dict[str, Any]]:
+    return [
+        {
+            "finding_id": finding.finding_id,
+            "policy_id": finding.policy_id,
+            "status": finding.status,
+            "resource": {"type": finding.resource_type, "ref": finding.resource_ref},
+            "evidence": [asdict(item) for item in finding.evidence],
+            "risk": asdict(finding.risk),
+            "savings": asdict(finding.savings),
+            "explanation": finding.explanation,
+        }
+        for finding in findings
+    ]
+
+
 def document(observed_at: str, findings: list[Finding]) -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
@@ -17,19 +33,7 @@ def document(observed_at: str, findings: list[Finding]) -> dict[str, Any]:
         "scanned_at": observed_at,
         "scope": {"requested": ["demo"], "completed": ["demo"], "failed": []},
         "status": "COMPLETE",
-        "findings": [
-            {
-                "finding_id": finding.finding_id,
-                "policy_id": finding.policy_id,
-                "status": finding.status,
-                "resource": {"type": finding.resource_type, "ref": finding.resource_ref},
-                "evidence": [asdict(item) for item in finding.evidence],
-                "risk": asdict(finding.risk),
-                "savings": asdict(finding.savings),
-                "explanation": finding.explanation,
-            }
-            for finding in findings
-        ],
+        "findings": _findings(findings),
         "collection_issues": [],
     }
 
@@ -58,8 +62,11 @@ def render_table(observed_at: str, findings: list[Finding]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def inventory_document(inventory: Any) -> dict[str, Any]:
+def inventory_document(inventory: Any, findings: list[Finding] | None = None) -> dict[str, Any]:
     """Serialize the AWS discovery result through an explicit public allowlist."""
+    analysis_status = "NOT_EVALUATED"
+    if findings is not None and inventory.status != "FAILED":
+        analysis_status = "COMPLETE" if inventory.status == "COMPLETE" else "PARTIAL"
     return {
         "schema_version": SCHEMA_VERSION,
         "data_kind": "AWS",
@@ -71,8 +78,8 @@ def inventory_document(inventory: Any) -> dict[str, Any]:
             "failed": inventory.failed,
         },
         "status": inventory.status,
-        "analysis_status": "NOT_EVALUATED",
-        "findings": [],
+        "analysis_status": analysis_status,
+        "findings": _findings(findings or []),
         "resources": [
             {
                 "resource_id": item.resource_id,
@@ -94,24 +101,33 @@ def inventory_document(inventory: Any) -> dict[str, Any]:
     }
 
 
-def render_inventory_json(inventory: Any) -> str:
+def render_inventory_json(inventory: Any, findings: list[Finding] | None = None) -> str:
     return (
-        json.dumps(inventory_document(inventory), ensure_ascii=False, sort_keys=True, indent=2)
+        json.dumps(
+            inventory_document(inventory, findings), ensure_ascii=False, sort_keys=True, indent=2
+        )
         + "\n"
     )
 
 
-def render_inventory_table(inventory: Any) -> str:
+def render_inventory_table(inventory: Any, findings: list[Finding] | None = None) -> str:
+    analysis_status = inventory_document(inventory, findings)["analysis_status"]
     lines = [
         f"AWS discovery: {inventory.status}",
         f"Observed at: {inventory.observed_at}",
-        "Analysis: NOT_EVALUATED (opportunity policies arrive in Phase 3)",
+        f"Analysis: {analysis_status}",
         "",
         "REGION  TYPE  RESOURCE ID  STATE  CPU METRICS",
     ]
     lines.extend(
         f"{item.region}  {item.type}  {item.resource_id}  {item.state}  {item.metrics_status}"
         for item in inventory.resources
+    )
+    lines.append("")
+    lines.append("FINDING ID  STATUS  RISK  SAVINGS")
+    lines.extend(
+        f"{item.finding_id}  {item.status}  {item.risk.level}  {item.savings.potential_savings}"
+        for item in (findings or [])
     )
     lines.append("")
     lines.append(

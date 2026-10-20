@@ -1,12 +1,13 @@
 # CloudSaver
 
-AWS 비용 절감 후보의 근거, 예상 절감액과 운영 위험을 함께 설명하는 셀프 호스팅 CLI입니다. **현재 Phase 1 데모와 Phase 2 AWS 읽기 전용 리소스 수집이 구현되었습니다.** 비용 절감 후보 탐지와 리소스 변경 기능은 아직 없습니다.
+AWS 비용 절감 후보의 근거, 예상 절감액과 운영 위험을 함께 설명하는 셀프 호스팅 CLI입니다. **현재 Phase 1–3의 데모, AWS 읽기 전용 수집, 가설적 후보 탐지가 구현되었습니다.** 비용 추정과 상세 위험 평가는 Phase 4 범위입니다.
 
 - [제품 요구사항과 원본 계획](agent.md)
 - [아키텍처와 결정 기록](docs/architecture.md)
 - [CLI 및 JSON 계약](docs/cli-contract.md)
 - [보안 경계](docs/security.md)와 [AWS 읽기 권한](docs/aws-permissions.md)
 - [단계별 개발 계획과 완료 기준](docs/development-plan.md)
+- [탐지 정책과 판단 한계](docs/policies.md)
 
 ## 로컬 설치와 5분 데모
 
@@ -25,7 +26,7 @@ python3 -m venv .venv
 
 `--output`은 새 파일에만 쓰고 기존 파일을 덮어쓰지 않습니다. 생성 파일 권한은 소유자 읽기/쓰기로 제한합니다. JSON은 표준 출력으로도 받을 수 있습니다. 데모 명령은 AWS 자격 증명과 네트워크가 필요 없습니다.
 
-## AWS 읽기 전용 스캔 (Phase 2)
+## AWS 읽기 전용 스캔과 후보 탐지 (Phase 2–3)
 
 AWS 수집기는 구현됐고 Stubber로만 검증했습니다. **실제 계정에서는 아직 실행하지 않았습니다.** 계정에서 사용할 때는 [읽기 권한과 호출 비용](docs/aws-permissions.md)을 먼저 확인하세요.
 
@@ -34,7 +35,7 @@ AWS 수집기는 구현됐고 Stubber로만 검증했습니다. **실제 계정�
 .venv/bin/cloudsaver scan --profile dev --regions ap-northeast-2 --format json
 ```
 
-`--profile`은 생략할 수 있으며, 이때 AWS SDK의 표준 자격 증명 체인을 사용합니다. `--regions`는 필수이고 쉼표로 여러 리전을 지정할 수 있습니다. 결과는 리소스 **발견 보고서**이며 `analysis_status: NOT_EVALUATED`입니다. 비용 절감 후보 탐지는 Phase 3에서 연결합니다. 오류가 나면 범위별 수집 실패와 종료 코드가 표시됩니다.
+`--profile`은 생략할 수 있으며, 이때 AWS SDK의 표준 자격 증명 체인을 사용합니다. `--regions`는 필수이고 쉼표로 여러 리전을 지정할 수 있습니다. 결과에는 발견 리소스와 세 가지 가설적 후보 정책의 결과가 함께 들어갑니다. `analysis_status`는 `COMPLETE`, `PARTIAL`, `NOT_EVALUATED` 중 하나입니다. [정책 조건](docs/policies.md)을 확인하세요. 오류가 나면 범위별 수집 실패와 종료 코드가 표시됩니다.
 
 ## 개발 검증
 

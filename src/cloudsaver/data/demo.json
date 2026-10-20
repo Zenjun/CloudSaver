@@ -9,6 +9,7 @@
       "state": "running",
       "cpu_average": 2.1,
       "cpu_samples": 14,
+      "metrics_status": "COMPLETE",
       "period_start": "2025-12-18T00:00:00Z",
       "period_end": "2026-01-01T00:00:00Z"
     },
@@ -20,6 +21,7 @@
       "state": "running",
       "cpu_average": 1.2,
       "cpu_samples": 14,
+      "metrics_status": "COMPLETE",
       "period_start": "2025-12-18T00:00:00Z",
       "period_end": "2026-01-01T00:00:00Z"
     },
@@ -45,6 +47,7 @@
       "state": "running",
       "cpu_average": null,
       "cpu_samples": 0,
+      "metrics_status": "MISSING",
       "period_start": "2025-12-18T00:00:00Z",
       "period_end": "2026-01-01T00:00:00Z"
     }
