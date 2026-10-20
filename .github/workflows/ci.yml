@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm, macos-15]
+        python: ['3.11', '3.12', '3.13']
+    runs-on: ${{ matrix.runner }}
+    env:
+      AWS_EC2_METADATA_DISABLED: 'true'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install project and development tools
+        run: python -m pip install -e '.[dev,custodian]'
+      - name: Test, lint, and type-check
+        run: |
+          python -m pytest -q
+          ruff check .
+          ruff format --check src tests scripts
+          mypy
+      - name: Check project files for credential markers
+        run: python scripts/check_secrets.py
+      - name: Build and install wheel in a clean environment
+        run: |
+          python -m build
+          python -m venv /tmp/cloudsaver-smoke
+          /tmp/cloudsaver-smoke/bin/python -m pip install dist/*.whl
+          /tmp/cloudsaver-smoke/bin/cloudsaver demo scan --format json > /tmp/cloudsaver-demo.json
+          /tmp/cloudsaver-smoke/bin/python -c 'import json; d=json.load(open("/tmp/cloudsaver-demo.json")); assert d["data_kind"] == "DEMO"'
+
+  docker:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Build local image
+        run: docker build --platform '${{ matrix.platform }}' -t cloudsaver:ci .
+      - name: Smoke test offline demo
+        run: |
+          docker run --rm --network none --read-only cloudsaver:ci demo scan --format json > /tmp/cloudsaver-container.json
+          python3 -c 'import json; d=json.load(open("/tmp/cloudsaver-container.json")); assert d["data_kind"] == "DEMO"'
+
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Install runtime extras and audit tool
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[aws,custodian]' pip-audit==2.10.1
+      - name: Audit installed dependencies
+        run: python -m pip_audit --local --skip-editable --progress-spinner off

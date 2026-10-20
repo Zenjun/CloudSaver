@@ -10,10 +10,12 @@ AWS 비용 절감 후보의 근거, 예상 절감액과 운영 위험을 함께 
 - [탐지 정책과 판단 한계](docs/policies.md)
 - [비용 계산과 위험 평가](docs/cost-model.md)
 - [Cloud Custodian 정책 연동](docs/custodian.md)
+- [설치 및 Docker 실행](docs/installation.md)
+- [공개 배포 준비](docs/release-readiness.md)
 
 ## 로컬 설치와 5분 데모
 
-Python 3.11 이상과 `venv`/`pip`가 필요합니다. 현재 직접 검증한 환경은 Linux aarch64, Python 3.13.5입니다. 다음 명령은 저장소 루트에서 실행합니다.
+Python 3.11 이상과 `venv`/`pip`가 필요합니다. 현재 직접 검증한 환경은 Linux aarch64의 Python 3.13.5와 arm64 컨테이너의 Python 3.11입니다. 다음 명령은 저장소 루트에서 실행합니다.
 
 ```bash
 python3 -m venv .venv
@@ -61,16 +63,27 @@ AWS 수집기는 구현됐고 Stubber로만 검증했습니다. **실제 계정�
 
 `validate`는 로컬에서 정책 구문을 확인합니다. `evaluate`는 지정한 계정에 읽기 API를 호출하므로 IAM 역할과 해당 역할을 맡을 권한이 필요합니다. 실제 AWS 계정에서는 아직 시험하지 않았습니다. 입력 정책의 허용 범위, 역할 권한, 결과 형식은 [Custodian 연동 문서](docs/custodian.md)에 있습니다.
 
+## 패키지와 Docker (Phase 6)
+
+소스에서 가상환경 설치와 Docker 이미지를 빌드할 수 있습니다. Docker 이미지는 일반 사용자로 실행하며 자격 증명을 포함하지 않습니다. 오프라인 데모 예시:
+
+```bash
+docker build --platform linux/arm64 -t cloudsaver:local .
+docker run --rm --network none --read-only cloudsaver:local demo scan
+```
+
+x86-64에서는 `linux/amd64`를 지정합니다. 실제 계정 조회용 자격 증명 마운트와 패키지/휠 설치 절차는 [설치 문서](docs/installation.md)에 있습니다. CI는 Python 3.11–3.13과 Linux amd64/arm64 및 macOS를 검사하도록 구성했습니다. 아직 원격 CI 결과나 실제 AWS 계정 동작을 확인한 것은 아닙니다.
+
 ## 개발 검증
 
 ```bash
 .venv/bin/python -m pip install -e '.[dev]'
 .venv/bin/python -m pytest -q
 .venv/bin/ruff check .
-.venv/bin/ruff format --check src tests
+.venv/bin/ruff format --check src tests scripts
 .venv/bin/mypy
 ```
 
 Python 패키지 구성은 [Python Packaging User Guide](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/)의 `pyproject.toml` 및 콘솔 스크립트 방식에 따릅니다. Phase 2 이후의 AWS 수집과 비용 데이터 조회에는 별도 권한·비용 검토가 필요합니다.
 
-라이선스와 정식 패키지 릴리스는 아직 결정되지 않았습니다. 실제 AWS 계정 조회도 검증하지 않았습니다.
+CloudSaver는 [Apache License 2.0](LICENSE)으로 배포합니다. 저작권 고지는 [NOTICE](NOTICE)를 참고하세요. 정식 패키지 릴리스와 실제 AWS 계정 조회는 아직 검증되지 않았습니다. 기여와 취약점 신고는 [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md)를 참고하세요.
