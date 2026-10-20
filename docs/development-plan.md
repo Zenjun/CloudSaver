@@ -1,6 +1,6 @@
 # 개발 계획 및 결정 대기 항목
 
-상태: Phase 0 설계, Phase 1 데모 CLI, Phase 2 AWS 수집기, Phase 3 탐지 정책, Phase 4 로컬 비용·설명 명령 구현. 실제 AWS 계정 조회는 미검증이다. 원본 계획은 [`agent.md`](../agent.md)다.
+상태: Phase 0 설계, Phase 1 데모 CLI, Phase 2 AWS 수집기, Phase 3 탐지 정책, Phase 4 로컬 비용·설명 명령, Phase 5 Custodian 정책 어댑터 구현. 실제 AWS 계정 조회는 미검증이다. 원본 계획은 [`agent.md`](../agent.md)다.
 
 ## 현재 저장소와 충돌
 
@@ -14,7 +14,7 @@
 | AWS 권한 | 읽기 API만 사용. Phase 2 호출 목록과 IAM 예시는 [`aws-permissions.md`](aws-permissions.md)에 정리 | 실제 계정에서 검증 전 |
 | Cost Explorer 비용·귀속 | 호출 요금과 리소스별 데이터 활성화/범위 제약이 있어 기본 비활성화 | Phase 4 전 가격·호출 수·사용자 옵션 재검증 |
 | ARM64 | 현 장비가 aarch64라도 배포 패키지·Docker의 linux/amd64, Mac 호환성은 미검증 | Phase 6에서 각 플랫폼 빌드·실행 |
-| Cloud Custodian | 정책 평가만 허용할 방법, CLI/API 버전, actions 차단과 IAM 제한 검증 필요 | Phase 5에서 공식 문서·고정 버전 시험 |
+| Cloud Custodian | 0.9.53 CLI 고정, 안전한 정책 부분집합, 역할 전환과 세션 정책 적용 | 실제 계정의 IAM/API 동작은 별도 허락 후 검증 |
 | 데이터 보존 | 초기엔 명시적 JSON 저장만. 파일 권한·마스킹 필요 | Phase 1 출력 구현, Phase 4 보고서 입력 구현 |
 | OSS 라이선스 | 저작권자 선택 전 `LICENSE` 작성·공개 불가 | 공개 배포 전 소유자 결정, 종속성 고지 점검 |
 | 정책 임계값 | 14일 구간, CPU 평균 5% 이하, 최소 7개 샘플을 가설적 검토 조건으로 채택. CPU 단독으로 중지 여부를 판단할 수 없음 | 실제 계정·업무 맥락에서 후속 검증 |
@@ -60,6 +60,10 @@ EC2/EBS 페이지네이션, Elastic IP, CloudWatch 결과 페이지네이션, �
 ## Phase 4 검증 기록
 
 저장된 JSON 보고서의 `report`, `explain`, `opportunities` 명령과, 사용자가 제공한 월별 비용 항목의 조건부 계산 엔진을 구현했다. 데이터가 없으면 절감액은 `UNKNOWN`이다. EC2 시나리오는 EBS·IPv4 잔존 비용을 변경 후 비용에 남긴다. 보호 태그, ASG 소속, 중요도 태그, 결측 관찰 자료의 위험 근거를 확대했다. 계산식·입력·제외 비용은 [비용 계산 문서](cost-model.md)에 있다. 실제 AWS 가격·청구 조회와 계정 검증은 하지 않았다.
+
+## Phase 5 검증 기록
+
+Custodian 0.9.53의 `validate`를 로컬에서 실행해 EBS 예시 정책을 검증했다. 정책의 `actions`, `mode`, 임의 리소스·필터, 중복 YAML 키는 실행 전에 거부한다. `evaluate` 명령은 지역과 IAM 역할 ARN을 필수로 받고 `--dryrun`, 역할 전환, 읽기 전용 세션 정책 및 임시 출력/캐시 경로를 적용한다. 모의 실행으로 인수·권한 경계·결과 마스킹을 확인했다. 실제 AWS 계정에는 접근하지 않았다. 상세 범위는 [Custodian 연동](custodian.md)에 있다.
 
 ## 사용자 확인이 필요한 결정
 

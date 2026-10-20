@@ -15,7 +15,8 @@ cloudsaver = "cloudsaver.cli:main"
 
 [project.optional-dependencies]
 aws = ["boto3>=1.34,<2"]
-dev = ["pytest>=8", "ruff>=0.9", "mypy>=1.14", "build>=1.2", "boto3>=1.34,<2"]
+custodian = ["c7n==0.9.53"]
+dev = ["pytest>=8", "ruff>=0.9", "mypy>=1.14", "build>=1.2", "boto3>=1.34,<2", "PyYAML>=6,<7", "types-PyYAML>=6,<7"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

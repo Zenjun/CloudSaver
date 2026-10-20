@@ -1,6 +1,6 @@
 # CloudSaver
 
-AWS 비용 절감 후보의 근거, 예상 절감액과 운영 위험을 함께 설명하는 셀프 호스팅 CLI입니다. **현재 Phase 1–4의 데모, AWS 읽기 전용 수집, 후보 탐지, 로컬 비용 시나리오·위험 설명이 구현되었습니다.** 실제 AWS 가격·청구 조회는 아직 없습니다.
+AWS 비용 절감 후보의 근거, 예상 절감액과 운영 위험을 함께 설명하는 셀프 호스팅 CLI입니다. **현재 Phase 1–5의 데모, AWS 읽기 전용 수집, 후보 탐지, 로컬 비용 시나리오·위험 설명, Cloud Custodian 정책 검증·평가 어댑터가 구현되었습니다.** 실제 AWS 가격·청구 조회는 아직 없습니다.
 
 - [제품 요구사항과 원본 계획](agent.md)
 - [아키텍처와 결정 기록](docs/architecture.md)
@@ -9,6 +9,7 @@ AWS 비용 절감 후보의 근거, 예상 절감액과 운영 위험을 함께 
 - [단계별 개발 계획과 완료 기준](docs/development-plan.md)
 - [탐지 정책과 판단 한계](docs/policies.md)
 - [비용 계산과 위험 평가](docs/cost-model.md)
+- [Cloud Custodian 정책 연동](docs/custodian.md)
 
 ## 로컬 설치와 5분 데모
 
@@ -49,6 +50,16 @@ AWS 수집기는 구현됐고 Stubber로만 검증했습니다. **실제 계정�
 ```
 
 `--cost-input`은 사용자가 월별 비용 항목과 출처를 직접 제공할 때만 사용합니다. 계산 결과는 실제 청구 절감이 아닌 **조건부 시나리오**이며, 입력이 없으면 `UNKNOWN`입니다. 형식과 잔존 비용 처리 방식은 [비용 계산 문서](docs/cost-model.md)에 있습니다. 저장된 보고서 명령은 AWS에 접속하지 않습니다.
+
+## Cloud Custodian 정책 검증과 평가 (Phase 5)
+
+```bash
+.venv/bin/python -m pip install -e '.[custodian]'
+.venv/bin/cloudsaver custodian validate --policy policy.yml --format json
+.venv/bin/cloudsaver custodian evaluate --policy policy.yml --region ap-northeast-2 --assume-role arn:aws:iam::123456789012:role/CloudSaverReadOnly --format json
+```
+
+`validate`는 로컬에서 정책 구문을 확인합니다. `evaluate`는 지정한 계정에 읽기 API를 호출하므로 IAM 역할과 해당 역할을 맡을 권한이 필요합니다. 실제 AWS 계정에서는 아직 시험하지 않았습니다. 입력 정책의 허용 범위, 역할 권한, 결과 형식은 [Custodian 연동 문서](docs/custodian.md)에 있습니다.
 
 ## 개발 검증
 

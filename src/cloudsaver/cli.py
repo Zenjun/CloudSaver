@@ -33,6 +33,19 @@ def _parser() -> argparse.ArgumentParser:
     aws_parser.add_argument(
         "--output", type=Path, metavar="PATH", help="write output to a new file"
     )
+    custodian_parser = commands.add_parser(
+        "custodian", help="Validate or evaluate safe Custodian policies"
+    )
+    custodian_commands = custodian_parser.add_subparsers(dest="custodian_command", required=True)
+    for name in ("validate", "evaluate"):
+        policy_parser = custodian_commands.add_parser(name)
+        policy_parser.add_argument("--policy", required=True, type=Path, metavar="POLICY.yml")
+        policy_parser.add_argument("--format", choices=("table", "json"), default="table")
+        policy_parser.add_argument("--output", type=Path, metavar="PATH")
+        if name == "evaluate":
+            policy_parser.add_argument("--region", required=True)
+            policy_parser.add_argument("--assume-role", required=True, metavar="ROLE_ARN")
+            policy_parser.add_argument("--profile")
     for name, help_text in (
         ("opportunities", "List candidates in a saved report"),
         ("explain", "Explain one finding in a saved report"),
@@ -67,6 +80,50 @@ def _write_new_file(path: Path, content: str) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.command == "custodian":
+        from cloudsaver.custodian import CustodianFailure, CustodianUnavailable, run
+
+        evaluate = args.custodian_command == "evaluate"
+        try:
+            result = run(
+                args.policy,
+                evaluate=evaluate,
+                region=args.region if evaluate else None,
+                assume_role=args.assume_role if evaluate else None,
+                profile=args.profile if evaluate else None,
+            )
+            if args.format == "json":
+                content = json.dumps(result, ensure_ascii=False, indent=2) + "\n"
+            else:
+                lines = [f"Custodian {result['evaluation_status']} (validation: VALID)"]
+                for item in result["policy_results"]:
+                    line = f"{item['name']} | {item['resource']}"
+                    if evaluate:
+                        line += f" | matched: {item['matched_count']}"
+                        if item["resource_refs"]:
+                            line += " | " + ", ".join(item["resource_refs"])
+                    lines.append(line)
+                content = "\n".join(lines) + "\n"
+            if args.output is None:
+                sys.stdout.write(content)
+            else:
+                _write_new_file(args.output, content)
+        except (ValueError, UnicodeError):
+            print("Invalid or unsafe Custodian policy or evaluation options.", file=sys.stderr)
+            return 2
+        except CustodianUnavailable as error:
+            print(str(error), file=sys.stderr)
+            return 2
+        except CustodianFailure as error:
+            print(str(error), file=sys.stderr)
+            return 5
+        except FileExistsError:
+            print("Output file already exists; choose a new path.", file=sys.stderr)
+            return 2
+        except OSError:
+            print("Could not read policy or write output file.", file=sys.stderr)
+            return 2
+        return 0
     if args.command in {"opportunities", "explain", "report"}:
         from cloudsaver.costs import apply_scenarios
         from cloudsaver.stored import read_report

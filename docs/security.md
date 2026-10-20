@@ -23,6 +23,6 @@ Cost Explorer API는 호출별 요금이 발생할 수 있고, 리소스별 데�
 | 누락/권한 오류를 0 사용량으로 해석 | `CollectionIssue`와 Evidence 품질을 필수로 유지 | 부분 실패 및 결측 fixture 테스트 |
 | 비밀 또는 계정 정보 노출 | 출력 직렬화 허용 목록, 마스킹, 원시 예외 제거 | 스냅샷 및 비밀 문자열 회귀 테스트 |
 | 과장된 절감액 | 가격/사용량/가정이 없으면 `UNKNOWN`; EC2 컴퓨트와 잔존 EBS/IP 비용 분리 | 비용 계산·부재 사례 테스트 |
-| 권한 높은 Custodian 정책 실행 | Phase 5에서 `actions` 정책 차단 + 읽기 전용 IAM | 정책 검증 및 권한 차단 테스트 |
+| 권한 높은 Custodian 정책 실행 | `actions`·`mode` 및 임의 필터 차단, 역할 전환과 읽기 전용 세션 정책 | 정책 거부·명령 인수·세션 정책 모의 테스트 |
 
 AWS API, CloudWatch, Cost Explorer의 요청 요금과 할당량은 서비스·리전에 따라 재확인한다. 본 설계 과정에서 실제 AWS 호출은 하지 않았다. Raspberry Pi 전역 설정, 상시 서비스, Docker 실행도 하지 않는다.

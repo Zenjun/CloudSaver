@@ -1,5 +1,7 @@
 # Phase 2 AWS 읽기 권한과 호출 범위
 
+Phase 5 Custodian 평가는 별도 IAM 역할을 사용한다. 해당 역할과 세션 정책의 API 허용 목록은 [Custodian 연동 문서](custodian.md)에 있다. 아래 목록은 `cloudsaver scan` 전용이다.
+
 `cloudsaver scan`의 구현은 다음 API만 호출한다. 이 문서는 **모킹 테스트 기준**이며 실제 계정 조회는 아직 검증하지 않았다.
 
 | API | 용도 | 호출 방식 |
