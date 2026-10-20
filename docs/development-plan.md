@@ -1,6 +1,6 @@
 # 개발 계획 및 결정 대기 항목
 
-상태: Phase 0 설계, Phase 1 데모 CLI, Phase 2 AWS 수집기, Phase 3 탐지 정책 구현. 실제 AWS 계정 조회는 미검증이다. 원본 계획은 [`agent.md`](../agent.md)다.
+상태: Phase 0 설계, Phase 1 데모 CLI, Phase 2 AWS 수집기, Phase 3 탐지 정책, Phase 4 로컬 비용·설명 명령 구현. 실제 AWS 계정 조회는 미검증이다. 원본 계획은 [`agent.md`](../agent.md)다.
 
 ## 현재 저장소와 충돌
 
@@ -56,6 +56,10 @@ EC2/EBS 페이지네이션, Elastic IP, CloudWatch 결과 페이지네이션, �
 ## Phase 3 검증 기록
 
 데모와 AWS 수집 결과가 공유 정책 엔진을 사용한다. EBS 분리, EC2 저사용률 의심, 미연결 Elastic IP의 세 정책을 구현했다. CPU 임계값, 14일 관찰 구간, 최소 샘플 수, 보호·보존 태그, 결측·오류 메트릭, 부분 수집 상태를 로컬 fixture로 시험했다. 가격 자료가 없어 절감액은 `UNKNOWN`이다. 실제 AWS 조회는 하지 않았다. 상세 기준은 [탐지 정책](policies.md)에 있다.
+
+## Phase 4 검증 기록
+
+저장된 JSON 보고서의 `report`, `explain`, `opportunities` 명령과, 사용자가 제공한 월별 비용 항목의 조건부 계산 엔진을 구현했다. 데이터가 없으면 절감액은 `UNKNOWN`이다. EC2 시나리오는 EBS·IPv4 잔존 비용을 변경 후 비용에 남긴다. 보호 태그, ASG 소속, 중요도 태그, 결측 관찰 자료의 위험 근거를 확대했다. 계산식·입력·제외 비용은 [비용 계산 문서](cost-model.md)에 있다. 실제 AWS 가격·청구 조회와 계정 검증은 하지 않았다.
 
 ## 사용자 확인이 필요한 결정
 

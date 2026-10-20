@@ -6,7 +6,7 @@ from typing import Any
 
 from cloudsaver.domain import Finding
 
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "1.1.0"
 
 
 def _findings(findings: list[Finding]) -> list[dict[str, Any]]:
@@ -137,3 +137,93 @@ def render_inventory_table(inventory: Any, findings: list[Finding] | None = None
         f"Issue: {issue.scope} {issue.operation} {issue.category}" for issue in inventory.issues
     )
     return "\n".join(lines) + "\n"
+
+
+def render_saved_json(saved: dict[str, Any], command: str, finding_id: str | None = None) -> str:
+    view = _saved_view(saved, command, finding_id)
+    return json.dumps(view, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
+
+
+def render_saved_table(saved: dict[str, Any], command: str, finding_id: str | None = None) -> str:
+    view = _saved_view(saved, command, finding_id)
+    if command == "explain":
+        finding = view["finding"]
+        risk = finding["risk"]
+        savings = finding["savings"]
+        lines = [
+            f"Finding: {finding['finding_id']}",
+            f"Status: {finding['status']}",
+            f"Risk: {risk['level']}",
+            f"Reasons: {', '.join(risk['reasons']) or 'none'}",
+            f"Unknown factors: {', '.join(risk['unknown_factors']) or 'none'}",
+            f"Explanation: {finding['explanation']}",
+            "Evidence:",
+        ]
+        lines.extend(
+            f"  {item['metric']}: {item['value']} {item['unit'] or ''} "
+            f"({item['quality']}, {item['period_start'] or '?'} to {item['period_end'] or '?'})"
+            for item in finding["evidence"]
+        )
+        lines.extend(
+            [
+                f"Savings: {savings['potential_savings']} {savings['currency']} "
+                f"per {savings['period']}",
+                f"Baseline: {savings['baseline']}; optimized: {savings['optimized']}",
+                f"Confidence: {savings['confidence']}",
+                f"Formula: {savings['formula']}",
+                f"Assumptions: {'; '.join(savings['assumptions']) or 'none'}",
+                f"Excluded costs: {'; '.join(savings['excluded_costs']) or 'none'}",
+                f"Data sources: {'; '.join(savings['data_sources']) or 'none'}",
+            ]
+        )
+    else:
+        lines = [
+            f"{view['data_kind']} report: {view['status']}",
+            f"Scanned at: {view['scanned_at']}",
+        ]
+        if view["data_kind"] == "DEMO":
+            lines.insert(0, "DEMO DATA — CloudSaver")
+        if "analysis_status" in view:
+            lines.append(f"Analysis: {view['analysis_status']}")
+        lines.extend(
+            [
+                f"Completed scopes: {len(view['scope']['completed'])}; "
+                f"failed scopes: {len(view['scope']['failed'])}",
+                "",
+                "FINDING ID  STATUS  RISK  SAVINGS",
+            ]
+        )
+        lines.extend(
+            f"{item['finding_id']}  {item['status']}  {item['risk']['level']}  "
+            f"{item['savings']['potential_savings']}"
+            for item in view["findings"]
+        )
+        lines.extend(
+            f"Issue: {item['scope']} {item['operation']} {item['category']}"
+            for item in view["collection_issues"]
+        )
+    return "\n".join(lines) + "\n"
+
+
+def _saved_view(saved: dict[str, Any], command: str, finding_id: str | None) -> dict[str, Any]:
+    if command == "report":
+        return saved
+    header = {key: saved[key] for key in ("schema_version", "data_kind", "scanned_at", "status")}
+    if saved["data_kind"] == "DEMO":
+        header["notice"] = "DEMO DATA"
+    if command == "explain":
+        finding = next(
+            (item for item in saved["findings"] if item["finding_id"] == finding_id), None
+        )
+        if finding is None:
+            raise ValueError("finding ID was not found")
+        header["finding"] = finding
+        return header
+    if command == "opportunities":
+        header["scope"] = saved["scope"]
+        header["collection_issues"] = saved["collection_issues"]
+        if "analysis_status" in saved:
+            header["analysis_status"] = saved["analysis_status"]
+        header["findings"] = [item for item in saved["findings"] if item["status"] == "CANDIDATE"]
+        return header
+    raise ValueError("unsupported report command")

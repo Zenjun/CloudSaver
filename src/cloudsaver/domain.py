@@ -101,6 +101,7 @@ class SavingsEstimate:
     optimized: str = "UNKNOWN"
     potential_savings: str = "UNKNOWN"
     confidence: str = "UNKNOWN"
+    formula: str = "UNKNOWN"
     assumptions: list[str] = field(default_factory=list)
     excluded_costs: list[str] = field(default_factory=list)
     data_sources: list[str] = field(default_factory=list)

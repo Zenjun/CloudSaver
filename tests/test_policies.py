@@ -95,6 +95,22 @@ def test_protection_and_retention_exclude_and_tags_are_not_serialized() -> None:
     assert "123456789012" not in report
 
 
+def test_autoscaling_importance_and_incomplete_metrics_raise_risk() -> None:
+    autoscaling = evaluate(
+        instance(tags={"aws:autoscaling:groupName": "example-group"}), provider="aws"
+    )
+    important = evaluate(instance(tags={"importance": "high"}), provider="aws")
+    incomplete = evaluate(
+        instance(tags={"environment": "dev"}, metrics_status="MISSING", cpu_average=None),
+        provider="aws",
+    )
+    assert autoscaling is not None and autoscaling.status == "EXCLUDED"
+    assert autoscaling.risk.reasons == ["autoscaling_group_membership"]
+    assert important is not None and important.risk.level == "HIGH"
+    assert incomplete is not None and incomplete.risk.level == "UNKNOWN"
+    assert "observation_completeness" in incomplete.risk.unknown_factors
+
+
 def test_ebs_ipv4_and_deterministic_order() -> None:
     volume = ResourceSnapshot("vol-example", "ebs_volume", REGION, {}, "available")
     address = ResourceSnapshot("eipalloc-example", "elastic_ip", REGION, {}, "unassociated")

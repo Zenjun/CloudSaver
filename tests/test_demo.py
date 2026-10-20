@@ -13,7 +13,7 @@ from cloudsaver.report import document
 def test_fixture_covers_candidate_protection_and_missing_data() -> None:
     observed_at, findings = scan()
     report = document(observed_at, findings)
-    assert report["schema_version"] == "1.0.0"
+    assert report["schema_version"] == "1.1.0"
     assert report["notice"] == "DEMO DATA"
     assert report["scope"]["failed"] == []
     assert len(findings) == 5

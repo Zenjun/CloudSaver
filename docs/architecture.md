@@ -1,6 +1,6 @@
 # 아키텍처 — Phase 0 설계안
 
-상태: Phase 0 설계안. Phase 1–3 데모 CLI, AWS 읽기 전용 수집기, 공유 탐지 정책이 구현되었고, 후속 단계의 구조는 제안이다. 상위 요구사항은 [`agent.md`](../agent.md)에 있다.
+상태: Phase 0 설계안. Phase 1–4 데모 CLI, AWS 읽기 전용 수집기, 공유 탐지 정책, 로컬 비용·보고서 명령이 구현되었고, 후속 단계의 구조는 제안이다. 상위 요구사항은 [`agent.md`](../agent.md)에 있다.
 
 ## 결정 기록
 
@@ -27,7 +27,7 @@ CLI 인수/출력
 표 / JSON 렌더러, 명시적 파일 저장
 ```
 
-현재 코드는 `src/cloudsaver/{cli.py,domain.py,demo.py,policies.py,report.py,providers/aws.py}`와 `tests/`에 있다. 비용·상세 위험 분석은 Phase 4에서, `storage`는 파일 기반 보고서 요구가 구체화될 때 추가한다. 의존 방향은 `cli`와 `providers/aws`에서 `domain`을 향하고, 도메인 코드는 외부 라이브러리의 응답 객체를 받아들이지 않는다. AWS SDK는 `scan` 명령에서만 불러온다.
+현재 코드는 `src/cloudsaver/{cli.py,domain.py,demo.py,policies.py,costs.py,stored.py,report.py,providers/aws.py}`와 `tests/`에 있다. 추가 AWS 비용 자료 연동은 후속 검증 후, `storage`는 파일 기반 보고서 요구가 구체화될 때 추가한다. 의존 방향은 `cli`와 `providers/aws`에서 `domain`을 향하고, 도메인 코드는 외부 라이브러리의 응답 객체를 받아들이지 않는다. AWS SDK는 `scan` 명령에서만 불러온다.
 
 ## 데이터 모델 초안
 

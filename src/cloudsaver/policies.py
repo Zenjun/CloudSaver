@@ -20,20 +20,33 @@ def _tag_values(resource: ResourceSnapshot, name: str) -> set[str]:
     }
 
 
-def _risk(resource: ResourceSnapshot, *, retention_unknown: bool = False) -> RiskAssessment:
+def _risk(
+    resource: ResourceSnapshot, *, retention_unknown: bool = False, insufficient: bool = False
+) -> RiskAssessment:
     affirmative = {"true", "yes", "1"}
     if (_tag_values(resource, "protected") | _tag_values(resource, "critical")) & affirmative:
         return RiskAssessment("CRITICAL", ["protected_or_critical_tag"])
+    if _tag_values(resource, "importance") & {"high", "critical"}:
+        return RiskAssessment("HIGH", ["high_importance_tag"])
     environment = _tag_values(resource, "environment")
     if environment & {"prod", "production"}:
         return RiskAssessment("HIGH", ["production_environment"])
+    if resource.type == "ec2_instance" and _tag_values(resource, "aws:autoscaling:groupname"):
+        return RiskAssessment("HIGH", ["autoscaling_group_membership"])
     if resource.type == "ebs_volume" and any(
         _tag_values(resource, key) & affirmative for key in ("retain", "retention", "do-not-delete")
     ):
         return RiskAssessment("HIGH", ["retention_tag"])
     unknown = ["application_dependencies"]
+    if resource.type == "ec2_instance":
+        unknown.extend(["load_balancer_registration", "network_and_disk_usage"])
     if retention_unknown:
         unknown.append("data_retention")
+    if insufficient:
+        unknown.append("observation_completeness")
+        return RiskAssessment("UNKNOWN", [], unknown)
+    if retention_unknown:
+        return RiskAssessment("UNKNOWN", [], unknown)
     if environment & {"dev", "development"}:
         return RiskAssessment("MEDIUM", ["development_environment"], unknown)
     return RiskAssessment("UNKNOWN", [], unknown + ["environment"])
@@ -49,7 +62,9 @@ def _finding(
     *,
     retention_unknown: bool = False,
 ) -> Finding:
-    risk = _risk(resource, retention_unknown=retention_unknown)
+    risk = _risk(
+        resource, retention_unknown=retention_unknown, insufficient=status == "INSUFFICIENT_DATA"
+    )
     if risk.level in {"HIGH", "CRITICAL"}:
         status = "EXCLUDED"
         explanation += " Protection or retention tags exclude this resource from the candidate set."

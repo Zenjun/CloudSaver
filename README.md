@@ -1,6 +1,6 @@
 # CloudSaver
 
-AWS 비용 절감 후보의 근거, 예상 절감액과 운영 위험을 함께 설명하는 셀프 호스팅 CLI입니다. **현재 Phase 1–3의 데모, AWS 읽기 전용 수집, 가설적 후보 탐지가 구현되었습니다.** 비용 추정과 상세 위험 평가는 Phase 4 범위입니다.
+AWS 비용 절감 후보의 근거, 예상 절감액과 운영 위험을 함께 설명하는 셀프 호스팅 CLI입니다. **현재 Phase 1–4의 데모, AWS 읽기 전용 수집, 후보 탐지, 로컬 비용 시나리오·위험 설명이 구현되었습니다.** 실제 AWS 가격·청구 조회는 아직 없습니다.
 
 - [제품 요구사항과 원본 계획](agent.md)
 - [아키텍처와 결정 기록](docs/architecture.md)
@@ -8,6 +8,7 @@ AWS 비용 절감 후보의 근거, 예상 절감액과 운영 위험을 함께 
 - [보안 경계](docs/security.md)와 [AWS 읽기 권한](docs/aws-permissions.md)
 - [단계별 개발 계획과 완료 기준](docs/development-plan.md)
 - [탐지 정책과 판단 한계](docs/policies.md)
+- [비용 계산과 위험 평가](docs/cost-model.md)
 
 ## 로컬 설치와 5분 데모
 
@@ -36,6 +37,18 @@ AWS 수집기는 구현됐고 Stubber로만 검증했습니다. **실제 계정�
 ```
 
 `--profile`은 생략할 수 있으며, 이때 AWS SDK의 표준 자격 증명 체인을 사용합니다. `--regions`는 필수이고 쉼표로 여러 리전을 지정할 수 있습니다. 결과에는 발견 리소스와 세 가지 가설적 후보 정책의 결과가 함께 들어갑니다. `analysis_status`는 `COMPLETE`, `PARTIAL`, `NOT_EVALUATED` 중 하나입니다. [정책 조건](docs/policies.md)을 확인하세요. 오류가 나면 범위별 수집 실패와 종료 코드가 표시됩니다.
+
+## 저장된 보고서 설명과 비용 시나리오 (Phase 4)
+
+```bash
+.venv/bin/cloudsaver demo scan --format json --output demo-report.json
+.venv/bin/cloudsaver opportunities --input demo-report.json
+.venv/bin/cloudsaver explain demo:low_utilization_ec2:ap-northeast-2:i-demo-dev --input demo-report.json
+.venv/bin/cloudsaver report --input demo-report.json --format json
+.venv/bin/cloudsaver report --input demo-report.json --cost-input costs.json --format json
+```
+
+`--cost-input`은 사용자가 월별 비용 항목과 출처를 직접 제공할 때만 사용합니다. 계산 결과는 실제 청구 절감이 아닌 **조건부 시나리오**이며, 입력이 없으면 `UNKNOWN`입니다. 형식과 잔존 비용 처리 방식은 [비용 계산 문서](docs/cost-model.md)에 있습니다. 저장된 보고서 명령은 AWS에 접속하지 않습니다.
 
 ## 개발 검증
 

@@ -1,6 +1,7 @@
 """CloudSaver command line entry point."""
 
 import argparse
+import json
 import os
 import sys
 from datetime import UTC, datetime
@@ -32,6 +33,25 @@ def _parser() -> argparse.ArgumentParser:
     aws_parser.add_argument(
         "--output", type=Path, metavar="PATH", help="write output to a new file"
     )
+    for name, help_text in (
+        ("opportunities", "List candidates in a saved report"),
+        ("explain", "Explain one finding in a saved report"),
+        ("report", "Render a saved report"),
+    ):
+        saved_parser = commands.add_parser(name, help=help_text)
+        if name == "explain":
+            saved_parser.add_argument("finding_id")
+        saved_parser.add_argument("--input", required=True, type=Path, metavar="REPORT.json")
+        saved_parser.add_argument(
+            "--cost-input",
+            type=Path,
+            metavar="COSTS.json",
+            help="optional user-supplied monthly cost components",
+        )
+        saved_parser.add_argument("--format", choices=("table", "json"), default="table")
+        saved_parser.add_argument(
+            "--output", type=Path, metavar="PATH", help="write output to a new file"
+        )
     return parser
 
 
@@ -47,6 +67,37 @@ def _write_new_file(path: Path, content: str) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.command in {"opportunities", "explain", "report"}:
+        from cloudsaver.costs import apply_scenarios
+        from cloudsaver.stored import read_report
+
+        try:
+            saved = read_report(args.input)
+            if args.cost_input is not None:
+                raw_costs = json.loads(args.cost_input.read_text(encoding="utf-8"))
+                if not isinstance(raw_costs, dict):
+                    raise ValueError("invalid cost input")
+                saved = apply_scenarios(saved, raw_costs)
+            finding_id = args.finding_id if args.command == "explain" else None
+            content = (
+                report.render_saved_json(saved, args.command, finding_id)
+                if args.format == "json"
+                else report.render_saved_table(saved, args.command, finding_id)
+            )
+            if args.output is None:
+                sys.stdout.write(content)
+            else:
+                _write_new_file(args.output, content)
+        except (ValueError, UnicodeError, json.JSONDecodeError):
+            print("Invalid report, cost input, or finding ID.", file=sys.stderr)
+            return 2
+        except FileExistsError:
+            print("Output file already exists; choose a new path.", file=sys.stderr)
+            return 2
+        except OSError:
+            print("Could not read input or write output file.", file=sys.stderr)
+            return 2
+        return 0
     if args.command == "demo" and args.demo_command == "scan":
         try:
             observed_at, findings = demo.scan()
