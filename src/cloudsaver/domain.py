@@ -17,6 +17,9 @@ class ResourceSnapshot:
     cpu_samples: int = 0
     period_start: str | None = None
     period_end: str | None = None
+    account_ref: str | None = None
+    observed_at: str | None = None
+    metrics_status: Literal["COMPLETE", "MISSING", "ERROR", "NOT_REQUESTED"] = "NOT_REQUESTED"
 
     @classmethod
     def from_mapping(cls, raw: dict[str, Any]) -> "ResourceSnapshot":

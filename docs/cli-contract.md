@@ -1,12 +1,12 @@
 # CLI 및 보고서 계약 — Phase 0 초안
 
-Phase 1의 `--help`와 `demo scan`은 구현되었다. 나머지는 **예정 인터페이스**이며 지금 실행되지 않는다.
+Phase 1의 `--help`와 `demo scan`, Phase 2의 `scan`이 구현되었다. 나머지는 **예정 인터페이스**이며 지금 실행되지 않는다.
 
 | 단계 | 명령 | 의미 |
 |---|---|---|
 | Phase 1 | `cloudsaver --help` | 설치된 명령과 사용법 표시 |
 | Phase 1 | `cloudsaver demo scan [--format table|json] [--output PATH]` | 고정 fixture 분석. 기본 표, AWS/네트워크 사용 없음 |
-| Phase 2–4 | `cloudsaver scan --regions REGION[,REGION...] [--profile NAME] [--format table|json] [--output PATH]` | 지정 리전 읽기 전용 수집. 리전 없으면 인수 오류 |
+| Phase 2 | `cloudsaver scan --regions REGION[,REGION...] [--profile NAME] [--format table|json] [--output PATH]` | 지정 리전 읽기 전용 수집. 리전 없으면 인수 오류. 후보 탐지는 아직 하지 않음 |
 | Phase 3–4 | `cloudsaver opportunities --input REPORT.json [--format table|json]` | 기존 보고서의 후보 조회 |
 | Phase 4 | `cloudsaver explain FINDING_ID --input REPORT.json [--format table|json]` | 후보의 근거, 위험, 비용 설명 |
 | Phase 4 | `cloudsaver report --input REPORT.json [--format table|json]` | 수집 문제와 후보를 포함한 전체 보고서 |
@@ -41,6 +41,8 @@ Phase 1의 `--help`와 `demo scan`은 구현되었다. 나머지는 **예정 인
 ```
 
 시각은 UTC ISO 8601로 직렬화한다. 같은 fixture와 고정 시각을 주면 결과와 정렬 순서가 같아야 한다. `UNKNOWN`은 가격 미확인의 명시적 상태이며 숫자 0과 다르다. 스캔 전체 실패 시 성공 형태의 빈 `findings`만 출력하지 않는다.
+
+AWS `scan` JSON에는 `data_kind: "AWS"`, `analysis_status: "NOT_EVALUATED"`, `resources`, `collection_issues`, `scope`가 들어간다. 후보 탐지 전 단계이므로 `findings: []`와 함께 `NOT_EVALUATED`를 반드시 표시한다. 계정 ID·태그 값·공인 IP 주소는 출력하지 않는다. `resources[].metrics.status`는 `COMPLETE`, `MISSING`, `ERROR`, `NOT_REQUESTED` 중 하나다.
 
 ## 종료 코드 제안
 

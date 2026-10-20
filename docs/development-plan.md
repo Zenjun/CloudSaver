@@ -1,6 +1,6 @@
 # 개발 계획 및 결정 대기 항목
 
-상태: Phase 0 설계 후 Phase 1 데모 CLI를 구현하고 로컬에서 검증했다. 원본 계획은 [`agent.md`](../agent.md)다.
+상태: Phase 0 설계, Phase 1 데모 CLI와 Phase 2 AWS 수집기 구현. 실제 AWS 계정 조회는 미검증이다. 원본 계획은 [`agent.md`](../agent.md)다.
 
 ## 현재 저장소와 충돌
 
@@ -10,8 +10,8 @@
 
 | 항목 | 현재 판단 | 결정/검증 시점 |
 |---|---|---|
-| Python/CLI 패키징 | Python CLI가 적합하나 최소 지원 버전, Typer/Click, Pydantic 도입 범위는 미확정 | Phase 1에서 공식 지원 버전·의존성 호환성 및 설치 테스트 |
-| AWS 권한 | 읽기 API만 사용. 세부 IAM 예시는 실제 호출 목록 확정 뒤 작성 | Phase 2에서 botocore 모킹과 권한 거부 테스트 |
+| Python/CLI 패키징 | Python 3.11 이상, `argparse`, dataclass로 시작. Linux aarch64 / Python 3.13.5에서 검증 | 다른 OS·Python 버전 설치 테스트는 Phase 6 |
+| AWS 권한 | 읽기 API만 사용. Phase 2 호출 목록과 IAM 예시는 [`aws-permissions.md`](aws-permissions.md)에 정리 | 실제 계정에서 검증 전 |
 | Cost Explorer 비용·귀속 | 호출 요금과 리소스별 데이터 활성화/범위 제약이 있어 기본 비활성화 | Phase 4 전 가격·호출 수·사용자 옵션 재검증 |
 | ARM64 | 현 장비가 aarch64라도 배포 패키지·Docker의 linux/amd64, Mac 호환성은 미검증 | Phase 6에서 각 플랫폼 빌드·실행 |
 | Cloud Custodian | 정책 평가만 허용할 방법, CLI/API 버전, actions 차단과 IAM 제한 검증 필요 | Phase 5에서 공식 문서·고정 버전 시험 |
@@ -48,6 +48,10 @@ Phase 1에서는 실제 AWS API 호출, 클라우드 쓰기, Docker 상시 실�
 ## Phase 1 검증 기록
 
 2026-10-19 현재 Linux aarch64 / Python 3.13.5에서 데모 CLI, JSON 출력, 네트워크 차단 및 무자격 환경, 출력 파일 권한·덮어쓰기 거부, 도움말·잘못된 인수 종료 코드를 확인했다. `pytest`, Ruff, mypy를 실행했고, sdist/휠을 빌드해 새 가상환경에서 휠 설치 후 데모 실행을 검증했다. 다른 Python 버전과 OS에서는 아직 실행하지 않았다. AWS API를 호출하지 않았다.
+
+## Phase 2 검증 기록
+
+EC2/EBS 페이지네이션, Elastic IP, CloudWatch 결과 페이지네이션, 메트릭 결측과 권한 오류, 스로틀링, 중간 페이지 실패, 지역 검증, 제한된 표준 재시도 설정을 botocore Stubber와 가짜 세션으로 시험했다. 수집 실패 범위를 보고서에 별도로 표시하고, 비용 절감 후보 분석은 `NOT_EVALUATED`로 표시한다. 테스트는 실제 AWS 계정에 접근하지 않았다. 실제 계정에서의 API·IAM·비용 검증은 별도 허락 후 진행한다.
 
 ## 사용자 확인이 필요한 결정
 

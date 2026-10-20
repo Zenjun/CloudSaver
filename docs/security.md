@@ -8,7 +8,7 @@ CloudSaver는 사용자의 장비에서 실행한다. 자격 증명은 AWS SDK�
 
 ## 권한과 호출 범위
 
-Phase 2에서 필요한 후보 권한은 `ec2:DescribeInstances`, `ec2:DescribeVolumes`, `ec2:DescribeAddresses`, `cloudwatch:GetMetricData`이며 ASG/로드밸런서 맥락 수집을 도입하면 해당 읽기 권한을 추가한다. 계정 식별에 STS 호출이 필요한지는 출력의 익명화 방식과 함께 검토한다. IAM 정책 예시는 실제 SDK 호출 목록을 확정한 후 작성한다. 읽기 전용 IAM 역할을 사용하고 삭제·중지·태그 수정 권한은 주지 않는다. `AccessDenied`는 그 범위의 수집 실패로 기록한다.
+Phase 2 구현의 API 호출과 IAM 정책 예시는 [`aws-permissions.md`](aws-permissions.md)에 정리했다. 계정 식별에는 STS `GetCallerIdentity`를 사용한다. 읽기 전용 IAM 역할을 사용하고 삭제·중지·태그 수정 권한은 주지 않는다. `AccessDenied`는 그 범위의 수집 실패로 기록한다.
 
 `DescribeAddresses`는 Elastic IP 범위다. 일반 공인 IPv4 전부를 확인하려면 별도의 IPAM 기능과 권한·비용 검토가 필요하다. AWS 문서도 Public IP Insights와 Elastic IP를 구분한다. [AWS Public IP Insights](https://docs.aws.amazon.com/vpc/latest/ipam/view-public-ip-insights.html)
 

@@ -1,16 +1,16 @@
 # 아키텍처 — Phase 0 설계안
 
-상태: Phase 0 설계안. Phase 1 데모 CLI가 구현되었고, 후속 단계의 구조는 제안이다. 상위 요구사항은 [`agent.md`](../agent.md)에 있다.
+상태: Phase 0 설계안. Phase 1 데모 CLI와 Phase 2 AWS 읽기 전용 수집기가 구현되었고, 후속 단계의 구조는 제안이다. 상위 요구사항은 [`agent.md`](../agent.md)에 있다.
 
 ## 결정 기록
 
 | ID | 결정 | 이유와 범위 |
 |---|---|---|
-| ADR-001 | Python 패키지의 CLI를 먼저 만든다 | 단독 설치와 CI 실행을 우선한다. 최소 Python 버전과 Typer/Click 선택은 Phase 1 호환성 시험 후 고정한다. |
+| ADR-001 | Python 3.11 이상, 표준 라이브러리 `argparse` CLI로 시작한다 | 데모 실행 의존성을 없애고 단독 설치와 CI 실행을 우선한다. Python 3.13/aarch64 외 환경은 아직 검증하지 않았다. |
 | ADR-002 | 도메인/탐지/평가 코어는 AWS SDK 및 CLI 프레임워크를 직접 참조하지 않는다 | 같은 fixture로 데모와 AWS 결과를 평가하고, 나중에 UI가 코어를 재사용할 수 있게 한다. |
 | ADR-003 | Demo 입력과 AWS 수집 결과를 같은 정규화 모델로 변환한다 | 데모가 실제 판단 규칙을 검증하도록 한다. 데모 경로에서 AWS 클라이언트나 자격 증명 탐색은 초기화하지 않는다. |
 | ADR-004 | 스캔은 메모리에서 수행하고 저장은 명시적 출력 파일로 시작한다 | 데이터 보관과 로컬 권한 문제를 줄인다. `opportunities`/`explain`은 저장된 보고서 입력을 받는다. |
-| ADR-005 | 기본 AWS 경로는 읽기 전용, Cost Explorer/Pricing 조회는 별도 명시 옵션으로 둔다 | 비용이 발생할 수 있는 API를 조용히 호출하지 않는다. 가격 자료가 없으면 금액은 `UNKNOWN`이다. |
+| ADR-005 | AWS 경로는 읽기 전용이며 Cost Explorer/Pricing을 호출하지 않는다 | CloudWatch 메트릭 호출은 비용이 발생할 수 있어 문서에 범위를 명시한다. 가격 자료가 없으면 금액은 `UNKNOWN`이다. |
 | ADR-006 | Cloud Custodian은 후속 평가 어댑터로 분리한다 | 정책의 `actions`와 권한 위험을 독립적으로 검증한 뒤 도입한다. |
 
 ## 모듈 경계와 데이터 흐름
@@ -27,7 +27,7 @@ CLI 인수/출력
 표 / JSON 렌더러, 명시적 파일 저장
 ```
 
-예정 디렉터리는 `src/cloudsaver/{cli,domain,providers/aws,policies,analysis,reports}`와 `tests/{unit,fixtures}`다. 실제 코드가 필요할 때만 생성한다. `storage`는 파일 기반 보고서 요구가 구체화될 때 추가한다. 의존 방향은 `cli`와 `providers/aws`에서 `domain`을 향하고, 도메인 코드는 외부 라이브러리의 응답 객체를 받아들이지 않는다.
+현재 코드는 `src/cloudsaver/{cli.py,domain.py,demo.py,report.py,providers/aws.py}`와 `tests/`에 있다. `policies`·`analysis`는 Phase 3–4에서, `storage`는 파일 기반 보고서 요구가 구체화될 때 추가한다. 의존 방향은 `cli`와 `providers/aws`에서 `domain`을 향하고, 도메인 코드는 외부 라이브러리의 응답 객체를 받아들이지 않는다. AWS SDK는 `scan` 명령에서만 불러온다.
 
 ## 데이터 모델 초안
 
