@@ -71,6 +71,13 @@ def _parser() -> argparse.ArgumentParser:
     dashboard_parser.add_argument("--input", required=True, type=Path, metavar="REPORT.json")
     dashboard_parser.add_argument("--cost-input", type=Path, metavar="COSTS.json")
     dashboard_parser.add_argument("--output", required=True, type=Path, metavar="DASHBOARD.html")
+    review_parser = commands.add_parser(
+        "action-review", help="Review why a saved finding cannot be executed"
+    )
+    review_parser.add_argument("finding_id")
+    review_parser.add_argument("--input", required=True, type=Path, metavar="REPORT.json")
+    review_parser.add_argument("--format", choices=("table", "json"), default="table")
+    review_parser.add_argument("--output", type=Path, metavar="PATH")
     return parser
 
 
@@ -86,6 +93,33 @@ def _write_new_file(path: Path, content: str) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.command == "action-review":
+        from cloudsaver.action_review import (
+            render_review_json,
+            render_review_table,
+            review_finding,
+        )
+        from cloudsaver.stored import read_report
+
+        try:
+            result = review_finding(read_report(args.input), args.finding_id)
+            content = (
+                render_review_json(result) if args.format == "json" else render_review_table(result)
+            )
+            if args.output is None:
+                sys.stdout.write(content)
+            else:
+                _write_new_file(args.output, content)
+        except (ValueError, UnicodeError, json.JSONDecodeError):
+            print("Invalid report or finding ID.", file=sys.stderr)
+            return 2
+        except FileExistsError:
+            print("Output file already exists; choose a new path.", file=sys.stderr)
+            return 2
+        except OSError:
+            print("Could not read report or write review file.", file=sys.stderr)
+            return 2
+        return 0
     if args.command == "dashboard":
         from cloudsaver.costs import apply_scenarios
         from cloudsaver.dashboard import render_dashboard

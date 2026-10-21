@@ -13,6 +13,7 @@ AWS 비용 절감 후보의 근거, 예상 절감액과 운영 위험을 함께 
 - [설치 및 Docker 실행](docs/installation.md)
 - [공개 배포 준비](docs/release-readiness.md)
 - [읽기 전용 대시보드](docs/dashboard.md)
+- [Phase 8 실행 승인 보안 검토](docs/phase8-approval-review.md)
 
 ## 로컬 설치와 5분 데모
 
@@ -85,6 +86,17 @@ x86-64에서는 `linux/amd64`를 지정합니다. 실제 계정 조회용 자격
 ```
 
 `dashboard.html`을 로컬 브라우저로 열면 탐지 후보, 위험 근거, 비용 가정, 수집 실패 범위를 볼 수 있습니다. `--cost-input costs.json`을 추가하면 Phase 4의 조건부 비용 시나리오를 같은 계산 엔진으로 적용합니다. 출력 파일은 새로 생성하며 권한은 `0600`입니다. 보고서에 민감한 데이터가 들어갈 수 있으므로 생성된 파일을 공개 웹 서버에 올리지 마세요. 자세한 범위는 [대시보드 문서](docs/dashboard.md)에 있습니다.
+
+## 실행 안전 검토 (Phase 8)
+
+저장된 탐지 건의 가정한 작업과 차단 사유를 오프라인에서 확인할 수 있습니다.
+
+```bash
+.venv/bin/cloudsaver action-review demo:low_utilization_ec2:ap-northeast-2:i-demo-dev \
+  --input demo-report.json --format json
+```
+
+결과는 항상 `BLOCKED`입니다. 이 명령은 승인이나 AWS 변경을 수행하지 않습니다. 실제 실행에 필요한 인증·대상 고정·재조회·감사 조건과 미완료 사항은 [Phase 8 보안 검토](docs/phase8-approval-review.md)에 있습니다.
 
 ## 개발 검증
 

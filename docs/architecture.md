@@ -1,6 +1,6 @@
 # 아키텍처 — Phase 0 설계안
 
-상태: Phase 0 설계안. Phase 1–5 데모 CLI, AWS 읽기 전용 수집기, 공유 탐지 정책, 로컬 비용·보고서 명령, Custodian 정책 어댑터와 Phase 7의 HTML 대시보드가 구현되었다. 상위 요구사항은 [`agent.md`](../agent.md)에 있다.
+상태: Phase 0 설계안. Phase 1–5 데모 CLI, AWS 읽기 전용 수집기, 공유 탐지 정책, 로컬 비용·보고서 명령, Custodian 정책 어댑터, Phase 7 HTML 대시보드와 Phase 8 오프라인 작업 검토가 구현되었다. 상위 요구사항은 [`agent.md`](../agent.md)에 있다.
 
 ## 결정 기록
 
@@ -13,6 +13,7 @@
 | ADR-005 | AWS 경로는 읽기 전용이며 Cost Explorer/Pricing을 호출하지 않는다 | CloudWatch 메트릭 호출은 비용이 발생할 수 있어 문서에 범위를 명시한다. 가격 자료가 없으면 금액은 `UNKNOWN`이다. |
 | ADR-006 | Cloud Custodian은 별도 평가 어댑터로 분리한다 | `actions`와 실행 모드를 거부하고, 역할 전환 및 읽기 전용 세션 정책을 적용한다. 결과는 `CUSTODIAN`으로 구분한다. |
 | ADR-007 | Phase 7 화면은 검증된 저장 보고서에서 독립 HTML로 생성한다 | 기존 분석·비용 엔진과 스키마를 재사용하며, 서버·클라우드 연결·추가 런타임 의존성 없이 로컬에서 읽기 전용으로 열 수 있다. HTML 이스케이프와 CSP를 적용하고 파일 권한을 제한한다. |
+| ADR-008 | Phase 8은 오프라인 차단 사유 검토로 시작하고 실행 기능은 분리한다 | 현재 보고서는 계정을 마스킹하며 신뢰된 인증·최신 상태 재조회·독립 감사가 없다. 어떤 저장 보고서도 승인 근거로 직접 사용하지 않는다. 자세한 경계는 [Phase 8 보안 검토](phase8-approval-review.md)에 있다. |
 
 ## 모듈 경계와 데이터 흐름
 
@@ -28,9 +29,11 @@ CLI 인수/출력
 표 / JSON 렌더러, 명시적 파일 저장
    ↓
 검증된 저장 보고서 → 읽기 전용 HTML 대시보드
+   ↓
+오프라인 작업 검토 → 항상 BLOCKED (AWS 변경 기능 없음)
 ```
 
-현재 코드는 `src/cloudsaver/{cli.py,domain.py,demo.py,policies.py,costs.py,stored.py,report.py,dashboard.py,providers/aws.py}`와 `tests/`에 있다. 추가 AWS 비용 자료 연동은 후속 검증 후, `storage`는 파일 기반 보고서 요구가 구체화될 때 추가한다. 의존 방향은 `cli`와 `providers/aws`에서 `domain`을 향하고, 도메인 코드는 외부 라이브러리의 응답 객체를 받아들이지 않는다. AWS SDK는 `scan` 명령에서만 불러온다.
+현재 코드는 `src/cloudsaver/{cli.py,domain.py,demo.py,policies.py,costs.py,stored.py,report.py,dashboard.py,action_review.py,providers/aws.py}`와 `tests/`에 있다. 추가 AWS 비용 자료 연동은 후속 검증 후, `storage`는 파일 기반 보고서 요구가 구체화될 때 추가한다. 의존 방향은 `cli`와 `providers/aws`에서 `domain`을 향하고, 도메인 코드는 외부 라이브러리의 응답 객체를 받아들이지 않는다. AWS SDK는 `scan` 명령에서만 불러온다.
 
 ## 데이터 모델 초안
 
@@ -55,4 +58,4 @@ CLI 인수/출력
 
 ## 보류한 설계
 
-네트워크 API·상시 실행 웹 서버, 데이터베이스, 승인/실행 엔진은 범위 밖이다. Phase 3의 정책 임계값과 근거·제약은 [탐지 정책](policies.md)에 기록한다. AWS 계정 전체 검색 범위와 멀티 계정 방식도 실제 권한 설계 후 결정한다.
+네트워크 API·상시 실행 웹 서버, 데이터베이스, 실제 승인/실행 엔진은 범위 밖이다. Phase 3의 정책 임계값과 근거·제약은 [탐지 정책](policies.md)에 기록한다. AWS 계정 전체 검색 범위와 멀티 계정 방식도 실제 권한 설계 후 결정한다.

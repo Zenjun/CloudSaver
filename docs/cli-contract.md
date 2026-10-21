@@ -1,6 +1,6 @@
 # CLI 및 보고서 계약 — Phase 0 초안
 
-Phase 1의 `--help`와 `demo scan`, Phase 2–3의 `scan` 수집 및 후보 탐지, Phase 4의 저장된 보고서 명령, Phase 5의 Custodian 검증·평가, Phase 7의 HTML 대시보드가 구현되었다.
+Phase 1의 `--help`와 `demo scan`, Phase 2–3의 `scan` 수집 및 후보 탐지, Phase 4의 저장된 보고서 명령, Phase 5의 Custodian 검증·평가, Phase 7의 HTML 대시보드, Phase 8의 오프라인 작업 검토가 구현되었다.
 
 | 단계 | 명령 | 의미 |
 |---|---|---|
@@ -13,6 +13,7 @@ Phase 1의 `--help`와 `demo scan`, Phase 2–3의 `scan` 수집 및 후보 탐�
 | Phase 5 | `cloudsaver custodian validate --policy POLICY.yml [--format table|json] [--output PATH]` | 안전한 정책 부분집합과 Custodian 스키마 검증. AWS 호출 없음 |
 | Phase 5 | `cloudsaver custodian evaluate --policy POLICY.yml --region REGION --assume-role ROLE_ARN [--profile NAME] [--format table|json] [--output PATH]` | 역할 전환과 읽기 전용 세션 정책으로 비파괴적 평가 |
 | Phase 7 | `cloudsaver dashboard --input REPORT.json --output DASHBOARD.html [--cost-input COSTS.json]` | 검증된 저장 보고서를 읽기 전용 HTML로 생성. AWS 호출 없음 |
+| Phase 8 | `cloudsaver action-review FINDING_ID --input REPORT.json [--format table|json] [--output PATH]` | 가정한 작업과 차단 사유 출력. 결과는 항상 `BLOCKED`; 승인·AWS 변경 없음 |
 
 `--output`은 명시된 파일에만 쓰며 기존 파일 덮어쓰기는 기본 거부한다. 표와 JSON은 표준 출력, 진단 메시지는 표준 오류로 보낸다. JSON 모드에서 표준 출력은 단일 유효 JSON 문서만 포함한다. 데모 결과에는 표 제목과 JSON `data_kind: "DEMO"` 및 `notice: "DEMO DATA"`를 표시한다. 도움말도 실제 지원하는 명령만 보여준다.
 
@@ -50,6 +51,8 @@ AWS `scan` JSON에는 `data_kind: "AWS"`, `analysis_status`, `resources`, `findi
 Phase 4의 저장 보고서 명령은 로컬 JSON을 읽으며 AWS를 호출하지 않는다. `opportunities`는 `CANDIDATE`만 표시하고, `explain`은 지정 finding의 근거·위험·계산 가정·출처를 표시한다. `report`는 수집 범위와 문제를 포함한 전체 보고서를 다시 출력한다. `--cost-input`은 명시적으로 제공한 월별 비용 항목에만 적용되며 결과는 `CONDITIONAL`이다. 금액이 없는 finding은 `UNKNOWN`을 유지한다. Phase 3의 `1.0.0` 보고서도 읽지만 새 출력 스키마는 `1.1.0`이다. 입력 형식과 계산 한계는 [비용 계산 문서](cost-model.md)에 있다.
 
 Custodian 결과는 `data_kind: "CUSTODIAN"`, `validation_status: "VALID"`, `evaluation_status: "NOT_EVALUATED"|"COMPLETE"`, `policy_results`를 포함한다. 평가 완료 항목에는 `matched_count`와 형식을 검증한 `resource_refs`만 추가한다. CloudSaver의 `findings`와 혼합하지 않는다. 자세한 제한은 [Custodian 연동](custodian.md)에 있다.
+
+`action-review` JSON은 `data_kind: "ACTION_REVIEW"`, `review_status: "BLOCKED"`, `execution_ready: false`, `considered_action`, `blockers`, `finding_id`를 포함한다. 이는 저장 보고서의 오프라인 검토 결과이며 승인 상태나 감사 로그가 아니다. [Phase 8 보안 검토](phase8-approval-review.md)에 차단 이유를 기록했다.
 
 ## 종료 코드 제안
 
