@@ -1,113 +1,216 @@
 # CloudSaver
 
-AWS 비용 절감 후보의 근거, 예상 절감액과 운영 위험을 함께 설명하는 셀프 호스팅 CLI입니다. **현재 Phase 1–5의 데모, AWS 읽기 전용 수집, 후보 탐지, 로컬 비용 시나리오·위험 설명, Cloud Custodian 정책 검증·평가 어댑터와 Phase 7의 읽기 전용 HTML 대시보드가 구현되었습니다.** 실제 AWS 가격·청구 조회는 아직 없습니다.
+CloudSaver는 AWS에서 **비용 절감 검토 후보**를 찾고, 판단 근거·운영 위험·예상 비용의 불확실성을 함께 보여주는 셀프 호스팅 CLI입니다. 리소스를 자동으로 중지하거나 삭제하지 않습니다. AWS 계정이 없어도 가상 데이터로 전체 분석 흐름을 시험할 수 있습니다.
 
-- [제품 요구사항과 원본 계획](agent.md)
-- [아키텍처와 결정 기록](docs/architecture.md)
-- [CLI 및 JSON 계약](docs/cli-contract.md)
-- [보안 경계](docs/security.md)와 [AWS 읽기 권한](docs/aws-permissions.md)
-- [단계별 개발 계획과 완료 기준](docs/development-plan.md)
-- [탐지 정책과 판단 한계](docs/policies.md)
-- [비용 계산과 위험 평가](docs/cost-model.md)
-- [Cloud Custodian 정책 연동](docs/custodian.md)
-- [설치 및 Docker 실행](docs/installation.md)
-- [공개 배포 준비](docs/release-readiness.md)
-- [읽기 전용 대시보드](docs/dashboard.md)
-- [Phase 8 실행 승인 보안 검토](docs/phase8-approval-review.md)
+> **현재 상태:** 개발 버전입니다. 데모·탐지·저장 보고서 분석·HTML 대시보드와 Cloud Custodian 정책 검증을 사용할 수 있습니다. AWS 읽기 전용 수집과 Custodian 평가는 모의 테스트를 거쳤지만 **실제 AWS 계정에서는 아직 검증하지 않았습니다.** 기본 스캔은 가격·청구 API를 호출하지 않아 절감액이 `UNKNOWN`입니다.
 
-## 로컬 설치와 5분 데모
+## 목차
 
-Python 3.11 이상과 `venv`/`pip`가 필요합니다. 현재 직접 검증한 환경은 Linux aarch64의 Python 3.13.5와 arm64 컨테이너의 Python 3.11입니다. 다음 명령은 저장소 루트에서 실행합니다.
+- [5분 시작: AWS 없이 데모 실행](#5분-시작-aws-없이-데모-실행)
+- [결과 읽는 법](#결과-읽는-법)
+- [명령 한눈에 보기](#명령-한눈에-보기)
+- [저장 보고서와 비용 시나리오](#저장-보고서와-비용-시나리오)
+- [HTML 대시보드와 실행 안전 검토](#html-대시보드와-실행-안전-검토)
+- [AWS 읽기 전용 스캔](#aws-읽기-전용-스캔)
+- [Cloud Custodian 정책 검증](#cloud-custodian-정책-검증)
+- [Docker 실행](#docker-실행)
+- [안전·제한 사항](#안전제한-사항)
+- [문제 해결](#문제-해결)
+- [개발·문서·라이선스](#개발문서라이선스)
+
+## 5분 시작: AWS 없이 데모 실행
+
+Python **3.11 이상**과 `venv`/`pip`가 필요합니다. 패키지 레지스트리 설치 안내 대신 현재 저장소의 소스에서 설치합니다. 아래 명령은 저장소 루트에서 실행합니다.
 
 ```bash
+git clone https://github.com/Zenjun/CloudSaver.git
+cd CloudSaver
 python3 -m venv .venv
 .venv/bin/python -m pip install -e .
 .venv/bin/cloudsaver --help
 .venv/bin/cloudsaver demo scan
-.venv/bin/cloudsaver demo scan --format json
 .venv/bin/cloudsaver demo scan --format json --output demo-report.json
 ```
 
-데모에는 개발 EC2, 보호된 프로덕션 EC2, 분리된 EBS, 미연결 Elastic IP, 메트릭 부족 EC2가 들어 있습니다. 모든 데이터는 가상이며 출력에 `DEMO DATA`를 표시합니다. 가격 자료가 없으므로 절감액은 `UNKNOWN`입니다. 낮은 CPU나 분리 상태만으로 중지·삭제를 권하지 않습니다.
+마지막 명령은 저장된 보고서 예제입니다. 데모에는 개발 EC2, 보호된 프로덕션 EC2, 분리된 EBS, 연결되지 않은 Elastic IP, 메트릭이 부족한 EC2가 포함됩니다. 출력의 `DEMO DATA`는 모두 가상 데이터라는 표시입니다. **데모 실행에는 AWS 자격 증명과 AWS API 호출이 필요하지 않습니다.** 설치 과정에서는 Python 빌드 의존성을 내려받기 위해 인터넷이 필요할 수 있습니다.
 
-`--output`은 새 파일에만 쓰고 기존 파일을 덮어쓰지 않습니다. 생성 파일 권한은 소유자 읽기/쓰기로 제한합니다. JSON은 표준 출력으로도 받을 수 있습니다. 데모 명령은 AWS 자격 증명과 네트워크가 필요 없습니다.
+`--output`은 새 파일만 만들며 기존 파일은 덮어쓰지 않습니다. 출력 파일의 권한은 소유자 읽기/쓰기(`0600`)입니다. 예제를 다시 실행할 때는 새 파일명을 지정하세요.
 
-## AWS 읽기 전용 스캔과 후보 탐지 (Phase 2–3)
+## 결과 읽는 법
 
-AWS 수집기는 구현됐고 Stubber로만 검증했습니다. **실제 계정에서는 아직 실행하지 않았습니다.** 계정에서 사용할 때는 [읽기 권한과 호출 비용](docs/aws-permissions.md)을 먼저 확인하세요.
+하나의 탐지 결과(`finding`)에는 정책·리소스 참조, 상태, 근거(`evidence`), 위험(`risk`), 비용(`savings`)이 들어갑니다. JSON에는 `schema_version`, `data_kind`, `scanned_at`, `scope`, `status`, `findings`, `collection_issues`가 포함됩니다.
+
+| 표시 | 뜻 |
+|---|---|
+| `CANDIDATE` | 추가 검토가 필요한 후보. 중지·삭제 권고나 실행 허가가 아닙니다. |
+| `EXCLUDED` | 보호 태그 등으로 후보에서 제외했습니다. |
+| `INSUFFICIENT_DATA` | 메트릭이나 관찰 기간이 부족합니다. 사용량 0으로 해석하지 않습니다. |
+| 위험 `UNKNOWN` | 운영 영향이 불분명합니다. 안전하다는 뜻이 아닙니다. |
+| 절감액 `UNKNOWN` | 검증 가능한 가격·청구 자료가 없습니다. 0원이라는 뜻이 아닙니다. |
+| 신뢰도 `CONDITIONAL` | 사용자가 제공한 금액으로 계산한 가상 시나리오입니다. 실제 청구 절감액이 아닙니다. |
+
+AWS 보고서의 `status: PARTIAL` 또는 `FAILED`와 `scope.failed`는 일부 범위가 수집되지 않았다는 뜻입니다. 빈 `findings` 목록만 보고 낭비가 없다고 판단하지 마세요. 기본 탐지 정책은 분리 EBS, 저사용률 의심 EC2, 미연결 Elastic IP의 세 가지입니다. 기준과 한계는 [탐지 정책](docs/policies.md)에 있습니다.
+
+## 명령 한눈에 보기
+
+아래 예제는 가상환경 설치 후 `.venv/bin/cloudsaver`로 실행합니다. 각 명령의 상세 옵션은 `cloudsaver <명령> --help`에서 확인할 수 있습니다.
+
+| 명령 | 용도 | AWS 연결 |
+|---|---|---|
+| `demo scan` | 가상 데이터 분석 | 없음 |
+| `scan --regions ...` | EC2·EBS·Elastic IP와 CloudWatch 읽기 전용 수집 | 있음 |
+| `opportunities --input ...` | 저장 보고서의 `CANDIDATE`만 보기 | 없음 |
+| `explain FINDING_ID --input ...` | 특정 후보의 근거·위험·비용 설명 | 없음 |
+| `report --input ...` | 저장 보고서 전체 다시 보기 | 없음 |
+| `dashboard --input ... --output ...` | 독립 HTML 대시보드 생성 | 없음 |
+| `action-review FINDING_ID --input ...` | 가정한 작업의 차단 사유 확인 | 없음 |
+| `custodian validate --policy ...` | 허용된 정책 부분집합 검증 | 없음 |
+| `custodian evaluate --policy ... --region ... --assume-role ...` | 읽기 전용 역할로 정책 평가 | 있음 |
+
+표가 기본 출력이고 지원 명령에 `--format json`을 붙이면 기계가 읽을 수 있는 JSON이 나옵니다. `dashboard`는 HTML 파일을 만들기 때문에 `--output`이 필수입니다. 명령 성공 종료 코드는 `0`이며, `action-review`의 `0`은 **검토 명령 성공**만 뜻하고 실행 허가는 아닙니다. `2`는 인수·입력 오류, `3`은 자격 증명 문제, `4`는 권한 거부, `5`는 전체 수집/평가 실패, `6`은 부분 수집 성공을 나타냅니다. 자세한 구조와 종료 코드는 [CLI 계약](docs/cli-contract.md)에 있습니다.
+
+## 저장 보고서와 비용 시나리오
+
+앞에서 만든 `demo-report.json`으로 후보를 확인합니다.
 
 ```bash
-.venv/bin/python -m pip install -e '.[aws]'
-.venv/bin/cloudsaver scan --profile dev --regions ap-northeast-2 --format json
-```
-
-`--profile`은 생략할 수 있으며, 이때 AWS SDK의 표준 자격 증명 체인을 사용합니다. `--regions`는 필수이고 쉼표로 여러 리전을 지정할 수 있습니다. 결과에는 발견 리소스와 세 가지 가설적 후보 정책의 결과가 함께 들어갑니다. `analysis_status`는 `COMPLETE`, `PARTIAL`, `NOT_EVALUATED` 중 하나입니다. [정책 조건](docs/policies.md)을 확인하세요. 오류가 나면 범위별 수집 실패와 종료 코드가 표시됩니다.
-
-## 저장된 보고서 설명과 비용 시나리오 (Phase 4)
-
-```bash
-.venv/bin/cloudsaver demo scan --format json --output demo-report.json
 .venv/bin/cloudsaver opportunities --input demo-report.json
-.venv/bin/cloudsaver explain demo:low_utilization_ec2:ap-northeast-2:i-demo-dev --input demo-report.json
+.venv/bin/cloudsaver explain demo:low_utilization_ec2:ap-northeast-2:i-demo-dev \
+  --input demo-report.json
 .venv/bin/cloudsaver report --input demo-report.json --format json
-.venv/bin/cloudsaver report --input demo-report.json --cost-input costs.json --format json
 ```
 
-`--cost-input`은 사용자가 월별 비용 항목과 출처를 직접 제공할 때만 사용합니다. 계산 결과는 실제 청구 절감이 아닌 **조건부 시나리오**이며, 입력이 없으면 `UNKNOWN`입니다. 형식과 잔존 비용 처리 방식은 [비용 계산 문서](docs/cost-model.md)에 있습니다. 저장된 보고서 명령은 AWS에 접속하지 않습니다.
+비용 데이터가 있다면 UTF-8 JSON 파일을 직접 준비해 조건부 월별 절감액을 계산할 수 있습니다. 다음 값은 **설명용 가상 금액**이며 AWS에서 조회한 가격이 아닙니다.
 
-## Cloud Custodian 정책 검증과 평가 (Phase 5)
-
-```bash
-.venv/bin/python -m pip install -e '.[custodian]'
-.venv/bin/cloudsaver custodian validate --policy policy.yml --format json
-.venv/bin/cloudsaver custodian evaluate --policy policy.yml --region ap-northeast-2 --assume-role arn:aws:iam::123456789012:role/CloudSaverReadOnly --format json
+```json
+{
+  "schema_version": "1.0.0",
+  "scenarios": [
+    {
+      "finding_id": "demo:low_utilization_ec2:ap-northeast-2:i-demo-dev",
+      "region": "ap-northeast-2",
+      "currency": "USD",
+      "source": "AWS_PRICING",
+      "as_of": "2026-10-01T00:00:00Z",
+      "components": [
+        {"kind": "compute", "baseline": "20.00", "optimized": "0.00"},
+        {"kind": "ebs", "baseline": "5.00", "optimized": "5.00"},
+        {"kind": "ipv4", "baseline": "3.00", "optimized": "3.00"}
+      ]
+    }
+  ]
+}
 ```
 
-`validate`는 로컬에서 정책 구문을 확인합니다. `evaluate`는 지정한 계정에 읽기 API를 호출하므로 IAM 역할과 해당 역할을 맡을 권한이 필요합니다. 실제 AWS 계정에서는 아직 시험하지 않았습니다. 입력 정책의 허용 범위, 역할 권한, 결과 형식은 [Custodian 연동 문서](docs/custodian.md)에 있습니다.
-
-## 패키지와 Docker (Phase 6)
-
-소스에서 가상환경 설치와 Docker 이미지를 빌드할 수 있습니다. Docker 이미지는 일반 사용자로 실행하며 자격 증명을 포함하지 않습니다. 오프라인 데모 예시:
+이를 `demo-costs.json`으로 저장한 뒤 실행합니다.
 
 ```bash
-docker build --platform linux/arm64 -t cloudsaver:local .
-docker run --rm --network none --read-only cloudsaver:local demo scan
+.venv/bin/cloudsaver report --input demo-report.json \
+  --cost-input demo-costs.json --format json
 ```
 
-x86-64에서는 `linux/amd64`를 지정합니다. 실제 계정 조회용 자격 증명 마운트와 패키지/휠 설치 절차는 [설치 문서](docs/installation.md)에 있습니다. CI는 Python 3.11–3.13과 Linux amd64/arm64 및 macOS를 검사하도록 구성했습니다. 아직 원격 CI 결과나 실제 AWS 계정 동작을 확인한 것은 아닙니다.
+이 예에서는 컴퓨트 비용만 제거하고 EBS·IPv4 비용은 남깁니다. 계산값이 보이더라도 `confidence: CONDITIONAL`이며 입력 출처의 진위나 실제 청구 절감은 검증하지 않습니다. `source`에 `AWS_PRICING`을 적는 것만으로 공식 가격을 조회한 것은 아닙니다. 필요한 필드, 정책별 비용 구성요소와 계산 제외 항목은 [비용 계산 문서](docs/cost-model.md)에 있습니다.
 
-## 읽기 전용 대시보드 (Phase 7)
+## HTML 대시보드와 실행 안전 검토
 
-저장된 보고서를 브라우저에서 볼 HTML 파일로 만들 수 있습니다. 별도 웹 서버나 JavaScript가 필요하지 않습니다.
+저장된 보고서를 브라우저에서 열 수 있는 **독립 HTML 파일**로 변환합니다. 웹 서버나 JavaScript는 필요하지 않습니다.
 
 ```bash
-.venv/bin/cloudsaver demo scan --format json --output demo-report.json
 .venv/bin/cloudsaver dashboard --input demo-report.json --output dashboard.html
+.venv/bin/cloudsaver dashboard --input demo-report.json \
+  --cost-input demo-costs.json --output priced-dashboard.html
 ```
 
-`dashboard.html`을 로컬 브라우저로 열면 탐지 후보, 위험 근거, 비용 가정, 수집 실패 범위를 볼 수 있습니다. `--cost-input costs.json`을 추가하면 Phase 4의 조건부 비용 시나리오를 같은 계산 엔진으로 적용합니다. 출력 파일은 새로 생성하며 권한은 `0600`입니다. 보고서에 민감한 데이터가 들어갈 수 있으므로 생성된 파일을 공개 웹 서버에 올리지 마세요. 자세한 범위는 [대시보드 문서](docs/dashboard.md)에 있습니다.
+브라우저에서 로컬 `dashboard.html`을 열면 후보 수, 상태, 위험·비용 근거, 수집 실패를 볼 수 있습니다. HTML에도 보고서 내용이 포함되므로 공개 웹 서버에 올리지 마세요. [대시보드 안내](docs/dashboard.md)
 
-## 실행 안전 검토 (Phase 8)
-
-저장된 탐지 건의 가정한 작업과 차단 사유를 오프라인에서 확인할 수 있습니다.
+탐지 건에 대한 가정한 작업과 차단 사유를 보려면 다음 명령을 사용합니다.
 
 ```bash
 .venv/bin/cloudsaver action-review demo:low_utilization_ec2:ap-northeast-2:i-demo-dev \
   --input demo-report.json --format json
 ```
 
-결과는 항상 `BLOCKED`입니다. 이 명령은 승인이나 AWS 변경을 수행하지 않습니다. 실제 실행에 필요한 인증·대상 고정·재조회·감사 조건과 미완료 사항은 [Phase 8 보안 검토](docs/phase8-approval-review.md)에 있습니다.
+`action-review` 결과는 항상 `BLOCKED`, `execution_ready: false`입니다. 승인서나 AWS 변경 명령이 아닙니다. 실제 실행에 필요한 인증·대상 고정·재조회·감사 설계는 [Phase 8 보안 검토](docs/phase8-approval-review.md)에 있습니다.
 
-## 개발 검증
+## AWS 읽기 전용 스캔
+
+AWS 계정 조회는 **선택 사항**입니다. 자격 증명, 사용 가능한 리전, 최소 권한 IAM 정책과 CloudWatch 호출 비용을 먼저 확인하세요. 현재 기능은 모의 응답으로 검증했으며 실제 계정에서는 아직 시험하지 않았습니다. [권한·API 목록](docs/aws-permissions.md)
 
 ```bash
-.venv/bin/python -m pip install -e '.[dev]'
+.venv/bin/python -m pip install -e '.[aws]'
+.venv/bin/cloudsaver scan --profile dev --regions ap-northeast-2 \
+  --format json --output aws-report.json
+```
+
+`--profile`을 빼면 AWS SDK의 표준 자격 증명 체인을 사용합니다. `--regions`는 필수이며 `ap-northeast-2,us-east-1`처럼 쉼표로 여러 지역을 지정할 수 있습니다. 스캔은 EC2·EBS·Elastic IP와 실행 중인 EC2의 CloudWatch CPU 메트릭을 읽습니다. 일반 공인 IPv4 전체를 찾는 기능은 아닙니다. Cost Explorer·Pricing API도 호출하지 않습니다. 실제 계정에서는 API 사용량에 따라 비용이 발생할 수 있습니다.
+
+```bash
+.venv/bin/cloudsaver report --input aws-report.json
+.venv/bin/cloudsaver opportunities --input aws-report.json --format json
+```
+
+자격 증명을 명령 인수, 저장소 파일 또는 공개 이슈에 넣지 마세요. 스캔 결과도 리소스 식별 정보를 포함할 수 있으므로 보관·공유 범위를 제한하세요.
+
+## Cloud Custodian 정책 검증
+
+Cloud Custodian 통합을 쓰려면 선택 의존성을 설치합니다. 다음 정책은 **검증 예제**이며 `actions`나 자동 실행 모드가 없습니다.
+
+```bash
+.venv/bin/python -m pip install -e '.[custodian]'
+cat > policy.yml <<'YAML'
+policies:
+  - name: detached-ebs
+    resource: aws.ebs
+    filters:
+      - type: value
+        key: State
+        value: available
+YAML
+.venv/bin/cloudsaver custodian validate --policy policy.yml --format json
+```
+
+`validate`는 로컬에서 정책 형식만 검사합니다. `evaluate`는 실제 AWS 읽기 API를 호출하므로 읽기 전용 IAM 역할과 그 역할을 맡을 권한이 필요합니다. 이 경로도 실제 계정에서는 아직 시험하지 않았습니다. 허용 필터, 차단 항목, 역할·세션 정책은 [Custodian 연동 문서](docs/custodian.md)를 참고하세요.
+
+## Docker 실행
+
+로컬 이미지에는 AWS와 Custodian 선택 의존성이 포함됩니다. 먼저 네트워크·자격 증명 없이 데모를 실행할 수 있습니다.
+
+```bash
+docker build --platform linux/arm64 -t cloudsaver:local .
+docker run --rm --network none --read-only cloudsaver:local demo scan --format json
+```
+
+`linux/arm64`는 로컬에서 검증한 플랫폼입니다. x86-64에서는 빌드 플랫폼을 `linux/amd64`로 바꾸세요. 이미지는 일반 사용자로 실행하며 자격 증명을 포함하지 않습니다. AWS 프로필을 컨테이너에 **명시적으로** 읽기 전용 마운트하는 방법은 [설치 문서](docs/installation.md)에 있습니다. 레지스트리 이미지 설치나 Docker Compose 배포는 현재 제공하지 않습니다.
+
+## 안전·제한 사항
+
+- 기본 동작은 분석 및 읽기 전용입니다. `apply`, `delete`, `stop` 같은 AWS 변경 명령은 없습니다.
+- 후보 탐지는 가설입니다. CPU가 낮거나 볼륨이 분리됐다는 이유만으로 중지·삭제 안전성을 알 수 없습니다.
+- 비용 자료가 없으면 `UNKNOWN`이고, 사용자가 제공한 비용은 `CONDITIONAL`입니다. 실제 청구 금액이나 검증된 절감액으로 표현하지 않습니다.
+- 실제 AWS 계정에서의 IAM/API 동작, macOS·Windows와 Docker amd64 동작은 아직 직접 검증하지 않았습니다. 로컬 Linux aarch64/Python 3.13.5와 Python 3.11 arm64 컨테이너에서 패키지·테스트 일부를 검증했습니다.
+- 공개 태그·GitHub Release·PyPI 패키지·외부 이미지 배포는 아직 하지 않았습니다. 공개 전 점검 목록은 [릴리스 준비](docs/release-readiness.md)에 있습니다.
+
+## 문제 해결
+
+| 상황 | 확인할 내용 |
+|---|---|
+| `AWS support is not installed` | `.[aws]`를 설치했는지 확인하세요. 데모·저장 보고서 명령에는 필요하지 않습니다. |
+| 자격 증명·프로필 오류 (`3`) | 로컬 AWS 프로필 또는 역할 설정을 확인하세요. 비밀 키를 명령·이슈에 붙이지 마세요. |
+| `AccessDenied` 또는 부분 수집 (`4`/`6`) | [읽기 권한](docs/aws-permissions.md)과 보고서의 `collection_issues`, `scope.failed`를 확인하세요. |
+| `Output file already exists` | 새 출력 파일명을 사용하세요. 기존 파일은 덮어쓰지 않습니다. |
+| `Invalid report, cost input, or finding ID` | CloudSaver가 만든 JSON인지, `schema_version`과 비용 항목이 맞는지 확인하세요. |
+| Custodian 미설치·정책 거부 | `.[custodian]` 설치 여부와 [허용 정책 범위](docs/custodian.md)를 확인하세요. |
+
+## 개발·문서·라이선스
+
+```bash
+.venv/bin/python -m pip install -e '.[dev,custodian]'
 .venv/bin/python -m pytest -q
 .venv/bin/ruff check .
 .venv/bin/ruff format --check src tests scripts
 .venv/bin/mypy
 ```
 
-Python 패키지 구성은 [Python Packaging User Guide](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/)의 `pyproject.toml` 및 콘솔 스크립트 방식에 따릅니다. Phase 2 이후의 AWS 수집과 비용 데이터 조회에는 별도 권한·비용 검토가 필요합니다.
+아키텍처와 JSON 계약은 [설계 문서](docs/architecture.md)와 [CLI 계약](docs/cli-contract.md)에, 단계별 검증 상태는 [개발 계획](docs/development-plan.md)에 있습니다. 기여 방법은 [CONTRIBUTING.md](CONTRIBUTING.md), 취약점 신고 방법은 [SECURITY.md](SECURITY.md), 변경 이력은 [CHANGELOG.md](CHANGELOG.md)를 참고하세요.
 
-CloudSaver는 [Apache License 2.0](LICENSE)으로 배포합니다. 저작권 고지는 [NOTICE](NOTICE)를 참고하세요. 정식 패키지 릴리스와 실제 AWS 계정 조회는 아직 검증되지 않았습니다. 기여와 취약점 신고는 [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md)를 참고하세요.
+CloudSaver는 [Apache License 2.0](LICENSE)으로 배포하며 저작권 고지는 [NOTICE](NOTICE)에 있습니다. 종속성 라이선스 검토는 [별도 문서](docs/third-party-licenses.md)에 기록했습니다.
